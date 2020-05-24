@@ -27,9 +27,9 @@
 #include "../QMeshLib/QMeshNode.h"
 
 #include "DeformTet.h"
-#include "GcodeGeneration.h"
+//#include "GcodeGeneration.h"
 #include "FiveAxisPoint.h"
-#include "alphanum.hpp"
+//#include "alphanum.hpp"
 #include <dirent.h>
 
 
@@ -560,261 +560,261 @@ void MainWindow::MoveHandleRegion() {
 	}
 }
 
-void MainWindow::runGcodeGeneration() {
-
-	cout << "Function __GcodeGeneration__ Start." << endl;
-
-	string PosNorFileDir = (ui->lineEdit_PosNorFileDir->text()).toStdString();
-	string OFFLayerFileDir = (ui->lineEdit_OFFLayerFile->text()).toStdString();
-	bool varyThickness_switch = ui->checkBox_varyHeight->isChecked();
-	string targetFileName = (ui->lineEdit_targetFileName->text()).toStdString();
-	bool collisionDetection_switch = ui->checkBox_collisionDetection->isChecked();
-
-
-	natSort(PosNorFileDir, wayPointFileCell);
-	//test for sort
-	//cout << "There are " << wayPointFileCell.size() << " files in the current directory." << endl;
-	//for (vector<string>::const_iterator iter = wayPointFileCell.cbegin(); iter != wayPointFileCell.cend(); iter++){
-	//cout << (*iter) << endl;
-	//}
-
-	readWayPointData(PosNorFileDir);
-
-	if (varyThickness_switch == true) {
-		natSort(OFFLayerFileDir, sliceSetFileCell);
-		if (wayPointFileCell.size() != sliceSetFileCell.size()) {
-			cout << "Error: Layers file num != Waypoints file num" << endl;
-			return;
-		}
-		else { readSliceData(OFFLayerFileDir); }
-	}
-
-	readExtruderHeadfile("extruderHead.obj");
-	readPlatformfile("printingPlatform.obj");
-	
-	PolygenMesh* polygenMesh_Slices;
-	PolygenMesh* polygenMesh_Waypoints;
-	PolygenMesh* polygenMesh_extruderHead;
-	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
-		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
-		if ("Slices" == polygenMesh->getModelName()) { polygenMesh_Slices = polygenMesh; }
-		if ("Waypoints" == polygenMesh->getModelName()) { polygenMesh_Waypoints = polygenMesh; }
-		if ("ExtruderHead" == polygenMesh->getModelName()) { polygenMesh_extruderHead = polygenMesh; }
-	}
-
-	GcodeGeneration* GcodeGene = new GcodeGeneration();
-	GcodeGene->getLayerHeight(polygenMesh_Slices, polygenMesh_Waypoints, varyThickness_switch);
-	GcodeGene->getUpZwayPnts(polygenMesh_Waypoints);
-	GcodeGene->singularityOpt(polygenMesh_Waypoints);
-	GcodeGene->detectCollision(polygenMesh_Waypoints, polygenMesh_extruderHead, collisionDetection_switch);
-	GcodeGene->height2E(polygenMesh_Waypoints,varyThickness_switch);
-	GcodeGene->writeGcode(polygenMesh_Waypoints, targetFileName);
-
-	/*
-
-	//for (GLKPOSITION Pos = polygenMesh_Waypoints->GetMeshList().GetHeadPosition(); Pos;) {
-	//	QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetNext(Pos);
-
-	//	for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
-	//		QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
-
-	//		double Px, Py, Pz, Nx, Ny, Nz;
-	//		Px = Node->m_orginalPostion[0];
-	//		Py = Node->m_orginalPostion[1];
-	//		Pz = Node->m_orginalPostion[2];
-	//		Nx = Node->m_orginalNormal[0];
-	//		Ny = Node->m_orginalNormal[1];
-	//		Nz = Node->m_orginalNormal[2];
-	//		
-	//		//cout << Px << " " << Py << " " << Pz << " " << Nx << " " << Ny << " " << Nz << endl;
-	//	}
-	//	int a = WayPointPatch->GetIndexNo();
-	//	cout << "--------------" << endl;
-
-	//}
-
-	*/
-	pGLK->refresh(true);
-	delete GcodeGene; 
-
-	std::cout << "Function __GcodeGeneration__ End." << std::endl;
-}
-
-void MainWindow::natSort(string dirctory, vector<string>& fileNameCell) {
-	
-	if (fileNameCell.empty() == false) return;
-	
-	DIR* dp;
-	struct dirent* ep;
-	string fullDir = "../1_GcodeGeneModel/" + dirctory;
-	//cout << fullDir << endl;
-	dp = opendir(fullDir.c_str());
-	//dp = opendir("../Waypoints");
-
-	if (dp != NULL) {
-		while (ep = readdir(dp)) {
-			//cout << ep->d_name << endl;
-			if ((string(ep->d_name) != ".") && (string(ep->d_name) != "..")) {
-				//cout << ep->d_name << endl;
-				fileNameCell.push_back(string(ep->d_name));
-			}
-		}
-		(void)closedir(dp);
-	}
-	else {
-		perror("Couldn't open the directory");
-	}
-	//resort the files with nature order
-	sort(fileNameCell.begin(), fileNameCell.end(), doj::alphanum_less<std::string>());
-
-}
-
-void MainWindow::readWayPointData(string packName) {
-
-	// isbuiled
-	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
-		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
-		if ("Waypoints" == polygenMesh->getModelName()) return;
-	}
-
-	PolygenMesh* waypointSet = new PolygenMesh;
-	waypointSet->setModelName("Waypoints");
-
-	//read slice files and build mesh_patches
-	char filename[1024];
-
-	for (int i = 0; i < wayPointFileCell.size(); i++) {
-
-		sprintf(filename, "%s%s%s%s", "../1_GcodeGeneModel/", packName.c_str(), "/", wayPointFileCell[i].data());
-		// cout << wayPointFileCell[i].data() << endl;
-
-		QMeshPatch* waypoint = new QMeshPatch;
-		waypoint->SetIndexNo(waypointSet->GetMeshList().GetCount()); //index begin from 0
-		waypointSet->GetMeshList().AddTail(waypoint);
-		
-		// isSupportLayer
-		string::size_type supportFlag = wayPointFileCell[i].find("S");
-		if (supportFlag == string::npos)	waypoint->isSupportLayer = false;
-		else { waypoint->isSupportLayer = true; }
-
-		//cout << waypoint->isSupportLayer << endl;
-
-		waypoint->inputPosNorFile(filename, waypoint->isSupportLayer);
-			
-		std::cout << ".";
-		if (((i + 1) % 100 == 0) || ((i + 1) == wayPointFileCell.size())) std::cout << std::endl;
-	}
-	////Display
-	waypointSet->BuildGLList(waypointSet->m_bVertexNormalShading);
-	polygenMeshList.AddTail(waypointSet);
-	pGLK->AddDisplayObj(waypointSet, true);
-	updateTree();
-	pGLK->refresh(true);
-	std::cout << "------------------------------------------- WayPoints Load OK!" << std::endl;
-}
-
-void MainWindow::readSliceData(string sliceSetName) {
-
-	// isbuiled
-	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
-		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
-		if ("Slices" == polygenMesh->getModelName()) return;
-	}
-
-	PolygenMesh* sliceSet = new PolygenMesh;
-	sliceSet->setModelName("Slices");
-
-	//read slice files and build mesh_patches
-	char filename[1024];
-	for (int i = 0; i < sliceSetFileCell.size(); i++)
-	{
-		sprintf(filename, "%s%s%s%s", "../1_GcodeGeneModel/", sliceSetName.c_str(), "/", sliceSetFileCell[i].data());
-		//cout << filename << endl;
-
-		QMeshPatch* slice = new QMeshPatch;
-		slice->SetIndexNo(sliceSet->GetMeshList().GetCount()); //index begin from 0
-		sliceSet->GetMeshList().AddTail(slice);
-		slice->inputOFFFile(filename, false);
-
-		cout << ".";
-		if (((i + 1) % 100 == 0) || ((i + 1) == sliceSetFileCell.size())) cout << endl;
-	}
-	//Display
-	sliceSet->BuildGLList(sliceSet->m_bVertexNormalShading);
-	polygenMeshList.AddTail(sliceSet);
-	pGLK->AddDisplayObj(sliceSet, true);
-	updateTree();
-	// pGLK->refresh(true);
-
-	cout << "------------------------------------------- Slices Load OK!" << endl;
-
-}
-
-void MainWindow::readExtruderHeadfile(string extruderHeadName) {
-
-	// isbuiled
-	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
-		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
-		if ("ExtruderHead" == polygenMesh->getModelName()) return;
-	}
-
-	PolygenMesh* extruderHead = new PolygenMesh;
-	extruderHead->setModelName("ExtruderHead");
-
-	//read slice files and build mesh_patches
-	char filename[1024];
-
-	sprintf(filename, "%s%s", "../1_GcodeGeneModel/", extruderHeadName.c_str());
-	//cout << filename << endl;
-
-	QMeshPatch* eHead = new QMeshPatch;
-	eHead->SetIndexNo(extruderHead->GetMeshList().GetCount()); //index begin from 0
-	extruderHead->GetMeshList().AddTail(eHead);
-	eHead->inputOBJFile(filename, false);
-
-	////Display
-	extruderHead->BuildGLList(extruderHead->m_bVertexNormalShading);
-	polygenMeshList.AddTail(extruderHead);
-	pGLK->AddDisplayObj(extruderHead, true);
-	updateTree();
-	pGLK->refresh(true);
-
-	cout << "------------------------------------------- Extruder Head Load OK!" << endl;
-
-}
-
-void MainWindow::readPlatformfile(string platformName) {
-
-	// isbuiled
-	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
-		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
-		if ("PrintPlatform" == polygenMesh->getModelName()) return;
-	}
-
-	PolygenMesh* extruderHead = new PolygenMesh;
-	extruderHead->setModelName("PrintPlatform");
-
-	//read slice files and build mesh_patches
-	char filename[1024];
-
-	sprintf(filename, "%s%s", "../1_GcodeGeneModel/", platformName.c_str());
-	//cout << filename << endl;
-
-	QMeshPatch* eHead = new QMeshPatch;
-	eHead->SetIndexNo(extruderHead->GetMeshList().GetCount()); //index begin from 0
-	extruderHead->GetMeshList().AddTail(eHead);
-	eHead->inputOBJFile(filename, false);
-
-	////Display
-	extruderHead->BuildGLList(extruderHead->m_bVertexNormalShading);
-	polygenMeshList.AddTail(extruderHead);
-	pGLK->AddDisplayObj(extruderHead, true);
-	updateTree();
-	pGLK->refresh(true);
-
-	cout << "------------------------------------------- Platform Load OK!" << endl;
-
-}
+//void MainWindow::runGcodeGeneration() {
+//
+//	cout << "Function __GcodeGeneration__ Start." << endl;
+//
+//	string PosNorFileDir = (ui->lineEdit_PosNorFileDir->text()).toStdString();
+//	string OFFLayerFileDir = (ui->lineEdit_OFFLayerFile->text()).toStdString();
+//	bool varyThickness_switch = ui->checkBox_varyHeight->isChecked();
+//	string targetFileName = (ui->lineEdit_targetFileName->text()).toStdString();
+//	bool collisionDetection_switch = ui->checkBox_collisionDetection->isChecked();
+//
+//
+//	natSort(PosNorFileDir, wayPointFileCell);
+//	//test for sort
+//	//cout << "There are " << wayPointFileCell.size() << " files in the current directory." << endl;
+//	//for (vector<string>::const_iterator iter = wayPointFileCell.cbegin(); iter != wayPointFileCell.cend(); iter++){
+//	//cout << (*iter) << endl;
+//	//}
+//
+//	readWayPointData(PosNorFileDir);
+//
+//	if (varyThickness_switch == true) {
+//		natSort(OFFLayerFileDir, sliceSetFileCell);
+//		if (wayPointFileCell.size() != sliceSetFileCell.size()) {
+//			cout << "Error: Layers file num != Waypoints file num" << endl;
+//			return;
+//		}
+//		else { readSliceData(OFFLayerFileDir); }
+//	}
+//
+//	readExtruderHeadfile("extruderHead.obj");
+//	readPlatformfile("printingPlatform.obj");
+//	
+//	PolygenMesh* polygenMesh_Slices;
+//	PolygenMesh* polygenMesh_Waypoints;
+//	PolygenMesh* polygenMesh_extruderHead;
+//	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
+//		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
+//		if ("Slices" == polygenMesh->getModelName()) { polygenMesh_Slices = polygenMesh; }
+//		if ("Waypoints" == polygenMesh->getModelName()) { polygenMesh_Waypoints = polygenMesh; }
+//		if ("ExtruderHead" == polygenMesh->getModelName()) { polygenMesh_extruderHead = polygenMesh; }
+//	}
+//
+//	GcodeGeneration* GcodeGene = new GcodeGeneration();
+//	GcodeGene->getLayerHeight(polygenMesh_Slices, polygenMesh_Waypoints, varyThickness_switch);
+//	GcodeGene->getUpZwayPnts(polygenMesh_Waypoints);
+//	GcodeGene->singularityOpt(polygenMesh_Waypoints);
+//	GcodeGene->detectCollision(polygenMesh_Waypoints, polygenMesh_extruderHead, collisionDetection_switch);
+//	GcodeGene->height2E(polygenMesh_Waypoints,varyThickness_switch);
+//	GcodeGene->writeGcode(polygenMesh_Waypoints, targetFileName);
+//
+//	/*
+//
+//	//for (GLKPOSITION Pos = polygenMesh_Waypoints->GetMeshList().GetHeadPosition(); Pos;) {
+//	//	QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetNext(Pos);
+//
+//	//	for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
+//	//		QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
+//
+//	//		double Px, Py, Pz, Nx, Ny, Nz;
+//	//		Px = Node->m_orginalPostion[0];
+//	//		Py = Node->m_orginalPostion[1];
+//	//		Pz = Node->m_orginalPostion[2];
+//	//		Nx = Node->m_orginalNormal[0];
+//	//		Ny = Node->m_orginalNormal[1];
+//	//		Nz = Node->m_orginalNormal[2];
+//	//		
+//	//		//cout << Px << " " << Py << " " << Pz << " " << Nx << " " << Ny << " " << Nz << endl;
+//	//	}
+//	//	int a = WayPointPatch->GetIndexNo();
+//	//	cout << "--------------" << endl;
+//
+//	//}
+//
+//	*/
+//	pGLK->refresh(true);
+//	delete GcodeGene; 
+//
+//	std::cout << "Function __GcodeGeneration__ End." << std::endl;
+//}
+//
+//void MainWindow::natSort(string dirctory, vector<string>& fileNameCell) {
+//	
+//	if (fileNameCell.empty() == false) return;
+//	
+//	DIR* dp;
+//	struct dirent* ep;
+//	string fullDir = "../1_GcodeGeneModel/" + dirctory;
+//	//cout << fullDir << endl;
+//	dp = opendir(fullDir.c_str());
+//	//dp = opendir("../Waypoints");
+//
+//	if (dp != NULL) {
+//		while (ep = readdir(dp)) {
+//			//cout << ep->d_name << endl;
+//			if ((string(ep->d_name) != ".") && (string(ep->d_name) != "..")) {
+//				//cout << ep->d_name << endl;
+//				fileNameCell.push_back(string(ep->d_name));
+//			}
+//		}
+//		(void)closedir(dp);
+//	}
+//	else {
+//		perror("Couldn't open the directory");
+//	}
+//	//resort the files with nature order
+//	sort(fileNameCell.begin(), fileNameCell.end(), doj::alphanum_less<std::string>());
+//
+//}
+//
+//void MainWindow::readWayPointData(string packName) {
+//
+//	// isbuiled
+//	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
+//		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
+//		if ("Waypoints" == polygenMesh->getModelName()) return;
+//	}
+//
+//	PolygenMesh* waypointSet = new PolygenMesh;
+//	waypointSet->setModelName("Waypoints");
+//
+//	//read slice files and build mesh_patches
+//	char filename[1024];
+//
+//	for (int i = 0; i < wayPointFileCell.size(); i++) {
+//
+//		sprintf(filename, "%s%s%s%s", "../1_GcodeGeneModel/", packName.c_str(), "/", wayPointFileCell[i].data());
+//		// cout << wayPointFileCell[i].data() << endl;
+//
+//		QMeshPatch* waypoint = new QMeshPatch;
+//		waypoint->SetIndexNo(waypointSet->GetMeshList().GetCount()); //index begin from 0
+//		waypointSet->GetMeshList().AddTail(waypoint);
+//		
+//		// isSupportLayer
+//		string::size_type supportFlag = wayPointFileCell[i].find("S");
+//		if (supportFlag == string::npos)	waypoint->isSupportLayer = false;
+//		else { waypoint->isSupportLayer = true; }
+//
+//		//cout << waypoint->isSupportLayer << endl;
+//
+//		waypoint->inputPosNorFile(filename, waypoint->isSupportLayer);
+//			
+//		std::cout << ".";
+//		if (((i + 1) % 100 == 0) || ((i + 1) == wayPointFileCell.size())) std::cout << std::endl;
+//	}
+//	////Display
+//	waypointSet->BuildGLList(waypointSet->m_bVertexNormalShading);
+//	polygenMeshList.AddTail(waypointSet);
+//	pGLK->AddDisplayObj(waypointSet, true);
+//	updateTree();
+//	pGLK->refresh(true);
+//	std::cout << "------------------------------------------- WayPoints Load OK!" << std::endl;
+//}
+//
+//void MainWindow::readSliceData(string sliceSetName) {
+//
+//	// isbuiled
+//	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
+//		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
+//		if ("Slices" == polygenMesh->getModelName()) return;
+//	}
+//
+//	PolygenMesh* sliceSet = new PolygenMesh;
+//	sliceSet->setModelName("Slices");
+//
+//	//read slice files and build mesh_patches
+//	char filename[1024];
+//	for (int i = 0; i < sliceSetFileCell.size(); i++)
+//	{
+//		sprintf(filename, "%s%s%s%s", "../1_GcodeGeneModel/", sliceSetName.c_str(), "/", sliceSetFileCell[i].data());
+//		//cout << filename << endl;
+//
+//		QMeshPatch* slice = new QMeshPatch;
+//		slice->SetIndexNo(sliceSet->GetMeshList().GetCount()); //index begin from 0
+//		sliceSet->GetMeshList().AddTail(slice);
+//		slice->inputOFFFile(filename, false);
+//
+//		cout << ".";
+//		if (((i + 1) % 100 == 0) || ((i + 1) == sliceSetFileCell.size())) cout << endl;
+//	}
+//	//Display
+//	sliceSet->BuildGLList(sliceSet->m_bVertexNormalShading);
+//	polygenMeshList.AddTail(sliceSet);
+//	pGLK->AddDisplayObj(sliceSet, true);
+//	updateTree();
+//	// pGLK->refresh(true);
+//
+//	cout << "------------------------------------------- Slices Load OK!" << endl;
+//
+//}
+//
+//void MainWindow::readExtruderHeadfile(string extruderHeadName) {
+//
+//	// isbuiled
+//	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
+//		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
+//		if ("ExtruderHead" == polygenMesh->getModelName()) return;
+//	}
+//
+//	PolygenMesh* extruderHead = new PolygenMesh;
+//	extruderHead->setModelName("ExtruderHead");
+//
+//	//read slice files and build mesh_patches
+//	char filename[1024];
+//
+//	sprintf(filename, "%s%s", "../1_GcodeGeneModel/", extruderHeadName.c_str());
+//	//cout << filename << endl;
+//
+//	QMeshPatch* eHead = new QMeshPatch;
+//	eHead->SetIndexNo(extruderHead->GetMeshList().GetCount()); //index begin from 0
+//	extruderHead->GetMeshList().AddTail(eHead);
+//	eHead->inputOBJFile(filename, false);
+//
+//	////Display
+//	extruderHead->BuildGLList(extruderHead->m_bVertexNormalShading);
+//	polygenMeshList.AddTail(extruderHead);
+//	pGLK->AddDisplayObj(extruderHead, true);
+//	updateTree();
+//	pGLK->refresh(true);
+//
+//	cout << "------------------------------------------- Extruder Head Load OK!" << endl;
+//
+//}
+//
+//void MainWindow::readPlatformfile(string platformName) {
+//
+//	// isbuiled
+//	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
+//		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
+//		if ("PrintPlatform" == polygenMesh->getModelName()) return;
+//	}
+//
+//	PolygenMesh* extruderHead = new PolygenMesh;
+//	extruderHead->setModelName("PrintPlatform");
+//
+//	//read slice files and build mesh_patches
+//	char filename[1024];
+//
+//	sprintf(filename, "%s%s", "../1_GcodeGeneModel/", platformName.c_str());
+//	//cout << filename << endl;
+//
+//	QMeshPatch* eHead = new QMeshPatch;
+//	eHead->SetIndexNo(extruderHead->GetMeshList().GetCount()); //index begin from 0
+//	extruderHead->GetMeshList().AddTail(eHead);
+//	eHead->inputOBJFile(filename, false);
+//
+//	////Display
+//	extruderHead->BuildGLList(extruderHead->m_bVertexNormalShading);
+//	polygenMeshList.AddTail(extruderHead);
+//	pGLK->AddDisplayObj(extruderHead, true);
+//	updateTree();
+//	pGLK->refresh(true);
+//
+//	cout << "------------------------------------------- Platform Load OK!" << endl;
+//
+//}
 
 void MainWindow::tianGcode2ABB()
 {
@@ -853,12 +853,14 @@ void MainWindow::tianGcode2ABB()
 		if ("Waypoints" == polygenMesh->getModelName()) { polygenMesh_Waypoints = polygenMesh; }
 		if ("ExtruderHead" == polygenMesh->getModelName()) { polygenMesh_extruderHead = polygenMesh; }
 	}
-
 	initialpoint->getLayerHeight(polygenMesh_Slices, polygenMesh_Waypoints, ui->checkBox_varyHeight->isChecked());
 	initialpoint->getUpZwayPnts(polygenMesh_Waypoints);
 	initialpoint->singularityOpt(polygenMesh_Waypoints);
-	initialpoint->detectCollision(polygenMesh_Waypoints, polygenMesh_extruderHead, collisionDetection_switch);
-	initialpoint->height2E(polygenMesh_Waypoints, varyThickness_switch);
-	initialpoint->writeGcode(polygenMesh_Waypoints, targetFileName);
+	//initialpoint->detectCollision(polygenMesh_Waypoints, polygenMesh_extruderHead, ui->checkBox_collisionDetection->isChecked());
+	initialpoint->height2E(polygenMesh_Waypoints, ui->checkBox_varyHeight->isChecked());
+	initialpoint->writeGcode(polygenMesh_Waypoints, ui->lineEdit_targetFileName->text().toStdString());
+	pGLK->refresh(true);
+	delete initialpoint;
+	std::cout << "Function __GcodeGeneration__ End." << std::endl;
 }
 

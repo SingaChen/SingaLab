@@ -9,7 +9,7 @@ void fiveAxisPoint::natSort(QString dirctory, vector<string>& fileNameCell)
 
 	DIR* dp;
 	struct dirent* ep;
-	string fullDir = "../1_GcodeGeneModel/" + dirctory.toStdString;
+	string fullDir = "../1_GcodeGeneModel/" + dirctory.toStdString();
 	//cout << fullDir << endl;
 	dp = opendir(fullDir.c_str());
 	//dp = opendir("../Waypoints");
@@ -1165,245 +1165,245 @@ void fiveAxisPoint::height2E(PolygenMesh* polygenMesh_Waypoints, bool func_switc
 	}
 }
 
-void fiveAxisPoint::detectCollision(
-	PolygenMesh* polygenMesh_Waypoints, PolygenMesh* polygenMesh_extruderHead, bool func_switch) {
-
-	if (func_switch == false) return;
-
-	QMeshPatch* eHead = (QMeshPatch*)polygenMesh_extruderHead->GetMeshList().GetHead();
-	QHULLSET* eHeadConvexFront = buildConvexHull_extruderHead(eHead);
-
-	int layerDepth = 6;
-	//int layers = xyzbceCell.size();
-	//for (int layerInd = 0; layerInd < layers; layerInd++) {
-
-	for (GLKPOSITION Pos = polygenMesh_Waypoints->GetMeshList().GetHeadPosition(); Pos;) {
-		QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetNext(Pos);
-
-		//int lines = xyzbceCell[layerInd].rows();
-		int detetedLayerInd = max(WayPointPatch->GetIndexNo() - layerDepth, 0);
-
-		for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
-			QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
-
-			//for (int lineInd = 0; lineInd < lines; lineInd++) {
-			double printHeadPos_x = Node->m_XYZBCE[0];
-			double printHeadPos_y = Node->m_XYZBCE[1];
-			double printHeadPos_z = Node->m_XYZBCE[2];
-			double platformRad_B = Node->m_XYZBCE[3] * 3.141592653589793 / 180;
-			double platformRad_C = Node->m_XYZBCE[4] * 3.141592653589793 / 180;
-
-			// test previous layer
-			//for (int preLayerInd = WayPointPatch->GetIndexNo() - 1; preLayerInd >= detetedLayerInd; preLayerInd--) {
-			int layerLoop = 0;
-			for (GLKPOSITION prevLayerPos = polygenMesh_Waypoints->GetMeshList().Find(WayPointPatch)->prev; prevLayerPos;) {
-				QMeshPatch* prevLayerWayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetPrev(prevLayerPos);
-
-				if (layerLoop > 6) break;
-
-				for (GLKPOSITION prevLayerNodePos = prevLayerWayPointPatch->GetNodeList().GetHeadPosition(); prevLayerNodePos;) {
-					QMeshNode* prevLayerNode = (QMeshNode*)prevLayerWayPointPatch->GetNodeList().GetNext(prevLayerNodePos);
-
-					//int preLayerlines = xyzbceCell[preLayerInd].rows();
-					//for (int preLayerlineInd = 0; preLayerlineInd < preLayerlines; preLayerlineInd++) {
-
-					double Px = prevLayerNode->m_printPostion[0];
-					double Py = prevLayerNode->m_printPostion[1];
-					double Pz = prevLayerNode->m_printPostion[2];
-					double B = platformRad_B;
-					double C = platformRad_C;
-
-					double X = cos(B) * cos(C) * Px - cos(B) * sin(C) * Py + sin(B) * Pz - printHeadPos_x;
-					double Y = sin(C) * Px + cos(C) * Py - printHeadPos_y;
-					double Z = -sin(B) * cos(C) * Px + sin(B) * sin(C) * Py + cos(B) * Pz - printHeadPos_z;
-
-					double pnt[3] = { X,Y,Z };
-					bool isInHull = _isPntInsideConvexHull(eHeadConvexFront, pnt);
-					if (isInHull) {
-						Node->isCollision = true;
-						prevLayerNode->iscollided = true;
-						cout << "Layer:[" << WayPointPatch->GetIndexNo() << "]\tPnt Index:[" << Node->GetIndexNo() << "]\t     COLLISION (different Layer)." << endl;
-						cout << "Collided point: Layer:[" << prevLayerWayPointPatch->GetIndexNo() << "]\tPnt Index:[" << prevLayerNode->GetIndexNo() << "]" << endl;
-						//cout << "/";
-						//break;
-					}
-				}
-				layerLoop++;
-			}
-
-			// test previous points in the same layer
-			GLKPOSITION prevPos = polygenMesh_Waypoints->GetMeshList().Find(WayPointPatch);
-			QMeshPatch* prevWayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetAt(prevPos);
-
-			for (GLKPOSITION prevNodePos = prevWayPointPatch->GetNodeList().GetHeadPosition(); prevNodePos;) {
-				QMeshNode* prevNode = (QMeshNode*)prevWayPointPatch->GetNodeList().GetNext(prevNodePos);
-
-				//for (int prelineInd = 0; prelineInd < lineInd; prelineInd++) {
-				if (prevNode->GetIndexNo() >= Node->GetIndexNo()) break;
-
-				double Px = prevNode->m_printPostion[0];
-				double Py = prevNode->m_printPostion[1];
-				double Pz = prevNode->m_printPostion[2];
-				double B = platformRad_B;
-				double C = platformRad_C;
-
-				double X = cos(B) * cos(C) * Px - cos(B) * sin(C) * Py + sin(B) * Pz - printHeadPos_x;
-				double Y = sin(C) * Px + cos(C) * Py - printHeadPos_y;
-				double Z = -sin(B) * cos(C) * Px + sin(B) * sin(C) * Py + cos(B) * Pz - printHeadPos_z;
-
-				double pnt[3] = { X,Y,Z };
-				bool isInHull = _isPntInsideConvexHull(eHeadConvexFront, pnt);
-				if (isInHull) {
-					Node->isCollision = true;
-					prevNode->iscollided = true;
-					cout << "Layer:[" << WayPointPatch->GetIndexNo() << "]\tPnt Index:[" << Node->GetIndexNo() << "]\t     COLLISION (same layer)." << endl;
-					//cout << "*";
-					//break;
-				}
-			}
-			//cout << "*";
-		}
-		//cout << ".";
-		//cout << "." << endl;
-		cout << "\n----------------------- Layer " << WayPointPatch->GetIndexNo() << " detected." << endl;
-		//if (((layerInd + 1) % 100 == 0) || ((layerInd + 1) == layers)) cout << endl;
-
-	}
-	cout << "------------------------------------------- Collision detection OK!" << endl;
-}
-
-QHULLSET* fiveAxisPoint::buildConvexHull_extruderHead(QMeshPatch* eHead) {
-	facetT* facet;		vertexT* vertex, ** vertexp;
-	int i, index, pntNum, num, stIndex;			float pos[3];
-	double vec[3][3], dir[3], v1[3], v2[3], pp[3];
-	QHULLSET* newConvexFront = NULL; // new convexhull used for checking
-
-	//-------------------------------------------------------------------------------------
-	//	Step 1: initialization
-
-	pntNum = eHead->GetNodeNumber();
-	double* pntArray = (double*)malloc(sizeof(double) * 3 * pntNum); //points use to compute convex hull
-
-	int nodeIndex = 0;
-	for (GLKPOSITION posMesh = eHead->GetNodeList().GetHeadPosition(); posMesh != nullptr;) {
-		QMeshNode* node = (QMeshNode*)eHead->GetNodeList().GetNext(posMesh);
-		node->GetCoord3D(pp[0], pp[1], pp[2]);
-		for (int i = 0; i < 3; i++)
-			pntArray[nodeIndex * 3 + i] = pp[i];
-		nodeIndex++;
-	}
-
-	//-------------------------------------------------------------------------------------
-	//	Step 2: computaing the convex-hull
-	qh_init_A(stdin, stdout, stderr, 0, NULL);
-	qh_initflags("Qt Qx");
-	qh_init_B(pntArray, pntNum, 3, false);
-	qh_qhull();
-	qh_check_output();
-	qh_triangulate();
-	if (qh VERIFYoutput && !qh STOPpoint && !qh STOPcone) qh_check_points();
-
-	//-------------------------------------------------------------------------------------
-	//	Step 3: output the results of convex-hull computation
-	int nodeNum = 0, faceNum = 0;
-	faceNum = qh_qh.num_facets;		nodeNum = qh_qh.num_vertices;
-	//printf("Convex-Hull: %d faces with %d vertices\n",faceNum,nodeNum);
-	if (faceNum > 0 && nodeNum > 0) {
-		newConvexFront = _mallocMemoryConvexHull(faceNum, nodeNum);
-		//---------------------------------------------------------------------------------
-		index = 0;
-		FORALLvertices{
-			vertex->id = index;	// before this assignment, "vertex->id" contains the id of input vertices
-		newConvexFront->vertPos[index * 3] = vertex->point[0];
-		newConvexFront->vertPos[index * 3 + 1] = vertex->point[1];
-		newConvexFront->vertPos[index * 3 + 2] = vertex->point[2];
-		index++;
-		}
-			//---------------------------------------------------------------------------------
-		index = 0;
-		FORALLfacets{
-			newConvexFront->normalVec[index * 3] = facet->normal[0];
-		newConvexFront->normalVec[index * 3 + 1] = facet->normal[1];
-		newConvexFront->normalVec[index * 3 + 2] = facet->normal[2];
-		newConvexFront->offset[index] = facet->offset;
-		//	It has been verified all normal[] vectors generated by qhull library are pointing outwards and are unit-vectors 
-		//		(verified by the function -- QuadTrglMesh* convexHullGeneration(QuadTrglMesh* inputMesh)  ).
-
-		int i = 0;
-		FOREACHvertex_(facet->vertices) {
-			newConvexFront->faceTable[index * 3 + i] = vertex->id + 1; //index start from 1;
-			//newConvexFront->faceTable[index * 3 + i] = vertex->id; //index start from 0;
-
-			SET(vec[i],vertex->point);
-			i++;
-			if (i >= 3) break; // Note that it could be a facet with more than 3 vertices if not applying "qh_triangulate();"
-		}
-
-		//-----------------------------------------------------------------------------
-		//	Check if the vertices on this face is given in the anti-clockwise order
-		SUB(v1,vec[1],vec[0]);
-		SUB(v2,vec[2],vec[0]);
-		CROSS(dir,v1,v2);
-		if (DOT(dir,facet->normal) < 0) {
-			unsigned int temp = newConvexFront->faceTable[index * 3];
-			newConvexFront->faceTable[index * 3] = newConvexFront->faceTable[index * 3 + 2];
-			newConvexFront->faceTable[index * 3 + 2] = temp;
-		}
-
-		index++;
-		}
-	}
-
-	//-------------------------------------------------------------------------------------
-	//	Step 4: free the memory
-	int curlong, totlong;
-	qh_freeqhull(false);
-	qh_memfreeshort(&curlong, &totlong);
-	if (curlong || totlong) fprintf(stderr, "qhull internal warning (main): did not free %d bytes of long memory (%d pieces)\n", totlong, curlong);
-	//-------------------------------------------------------------------------------------
-	free(pntArray);
-
-	return newConvexFront;
-}
-
-QHULLSET* fiveAxisPoint::_mallocMemoryConvexHull(int faceNum, int vertNum)
-{
-	QHULLSET* pConvexHull;
-
-	pConvexHull = (QHULLSET*)malloc(sizeof(QHULLSET));
-	pConvexHull->faceNum = faceNum;
-	pConvexHull->normalVec = (double*)malloc(sizeof(double) * 3 * faceNum);
-	pConvexHull->offset = (double*)malloc(sizeof(double) * faceNum);
-
-	pConvexHull->faceTable = (unsigned int*)malloc(sizeof(unsigned int) * 3 * faceNum);
-
-	pConvexHull->vertNum = vertNum;
-	pConvexHull->vertPos = (double*)malloc(sizeof(double) * 3 * vertNum);
-
-	return pConvexHull;
-}
-
-bool fiveAxisPoint::_isPntInsideConvexHull(QHULLSET* pConvexHull, double pnt[]) {
-	double normVec[3], offValue;
-
-	for (int i = 0; i < pConvexHull->faceNum; i++) {
-		normVec[0] = pConvexHull->normalVec[i * 3];
-		normVec[1] = pConvexHull->normalVec[i * 3 + 1];
-		normVec[2] = pConvexHull->normalVec[i * 3 + 2];
-		offValue = pConvexHull->offset[i];
-		if ((DOT(pnt, normVec) + offValue) >= 0.0) return false;
-
-	}
-	return true;
-}
-
-void fiveAxisPoint::_freeMemoryConvexHull(QHULLSET*& pConvexHull)
-{
-	free((pConvexHull->normalVec));
-	free((pConvexHull->offset));
-	free((pConvexHull->faceTable));
-	free((pConvexHull->vertPos));
-	free(pConvexHull);
-
-	pConvexHull = NULL;
-}
+//void fiveAxisPoint::detectCollision(
+//	PolygenMesh* polygenMesh_Waypoints, PolygenMesh* polygenMesh_extruderHead, bool func_switch) {
+//
+//	if (func_switch == false) return;
+//
+//	QMeshPatch* eHead = (QMeshPatch*)polygenMesh_extruderHead->GetMeshList().GetHead();
+//	QHULLSET* eHeadConvexFront = buildConvexHull_extruderHead(eHead);
+//
+//	int layerDepth = 6;
+//	//int layers = xyzbceCell.size();
+//	//for (int layerInd = 0; layerInd < layers; layerInd++) {
+//
+//	for (GLKPOSITION Pos = polygenMesh_Waypoints->GetMeshList().GetHeadPosition(); Pos;) {
+//		QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetNext(Pos);
+//
+//		//int lines = xyzbceCell[layerInd].rows();
+//		int detetedLayerInd = max(WayPointPatch->GetIndexNo() - layerDepth, 0);
+//
+//		for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
+//			QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
+//
+//			//for (int lineInd = 0; lineInd < lines; lineInd++) {
+//			double printHeadPos_x = Node->m_XYZBCE[0];
+//			double printHeadPos_y = Node->m_XYZBCE[1];
+//			double printHeadPos_z = Node->m_XYZBCE[2];
+//			double platformRad_B = Node->m_XYZBCE[3] * 3.141592653589793 / 180;
+//			double platformRad_C = Node->m_XYZBCE[4] * 3.141592653589793 / 180;
+//
+//			// test previous layer
+//			//for (int preLayerInd = WayPointPatch->GetIndexNo() - 1; preLayerInd >= detetedLayerInd; preLayerInd--) {
+//			int layerLoop = 0;
+//			for (GLKPOSITION prevLayerPos = polygenMesh_Waypoints->GetMeshList().Find(WayPointPatch)->prev; prevLayerPos;) {
+//				QMeshPatch* prevLayerWayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetPrev(prevLayerPos);
+//
+//				if (layerLoop > 6) break;
+//
+//				for (GLKPOSITION prevLayerNodePos = prevLayerWayPointPatch->GetNodeList().GetHeadPosition(); prevLayerNodePos;) {
+//					QMeshNode* prevLayerNode = (QMeshNode*)prevLayerWayPointPatch->GetNodeList().GetNext(prevLayerNodePos);
+//
+//					//int preLayerlines = xyzbceCell[preLayerInd].rows();
+//					//for (int preLayerlineInd = 0; preLayerlineInd < preLayerlines; preLayerlineInd++) {
+//
+//					double Px = prevLayerNode->m_printPostion[0];
+//					double Py = prevLayerNode->m_printPostion[1];
+//					double Pz = prevLayerNode->m_printPostion[2];
+//					double B = platformRad_B;
+//					double C = platformRad_C;
+//
+//					double X = cos(B) * cos(C) * Px - cos(B) * sin(C) * Py + sin(B) * Pz - printHeadPos_x;
+//					double Y = sin(C) * Px + cos(C) * Py - printHeadPos_y;
+//					double Z = -sin(B) * cos(C) * Px + sin(B) * sin(C) * Py + cos(B) * Pz - printHeadPos_z;
+//
+//					double pnt[3] = { X,Y,Z };
+//					bool isInHull = _isPntInsideConvexHull(eHeadConvexFront, pnt);
+//					if (isInHull) {
+//						Node->isCollision = true;
+//						prevLayerNode->iscollided = true;
+//						cout << "Layer:[" << WayPointPatch->GetIndexNo() << "]\tPnt Index:[" << Node->GetIndexNo() << "]\t     COLLISION (different Layer)." << endl;
+//						cout << "Collided point: Layer:[" << prevLayerWayPointPatch->GetIndexNo() << "]\tPnt Index:[" << prevLayerNode->GetIndexNo() << "]" << endl;
+//						//cout << "/";
+//						//break;
+//					}
+//				}
+//				layerLoop++;
+//			}
+//
+//			// test previous points in the same layer
+//			GLKPOSITION prevPos = polygenMesh_Waypoints->GetMeshList().Find(WayPointPatch);
+//			QMeshPatch* prevWayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetAt(prevPos);
+//
+//			for (GLKPOSITION prevNodePos = prevWayPointPatch->GetNodeList().GetHeadPosition(); prevNodePos;) {
+//				QMeshNode* prevNode = (QMeshNode*)prevWayPointPatch->GetNodeList().GetNext(prevNodePos);
+//
+//				//for (int prelineInd = 0; prelineInd < lineInd; prelineInd++) {
+//				if (prevNode->GetIndexNo() >= Node->GetIndexNo()) break;
+//
+//				double Px = prevNode->m_printPostion[0];
+//				double Py = prevNode->m_printPostion[1];
+//				double Pz = prevNode->m_printPostion[2];
+//				double B = platformRad_B;
+//				double C = platformRad_C;
+//
+//				double X = cos(B) * cos(C) * Px - cos(B) * sin(C) * Py + sin(B) * Pz - printHeadPos_x;
+//				double Y = sin(C) * Px + cos(C) * Py - printHeadPos_y;
+//				double Z = -sin(B) * cos(C) * Px + sin(B) * sin(C) * Py + cos(B) * Pz - printHeadPos_z;
+//
+//				double pnt[3] = { X,Y,Z };
+//				bool isInHull = _isPntInsideConvexHull(eHeadConvexFront, pnt);
+//				if (isInHull) {
+//					Node->isCollision = true;
+//					prevNode->iscollided = true;
+//					cout << "Layer:[" << WayPointPatch->GetIndexNo() << "]\tPnt Index:[" << Node->GetIndexNo() << "]\t     COLLISION (same layer)." << endl;
+//					//cout << "*";
+//					//break;
+//				}
+//			}
+//			//cout << "*";
+//		}
+//		//cout << ".";
+//		//cout << "." << endl;
+//		cout << "\n----------------------- Layer " << WayPointPatch->GetIndexNo() << " detected." << endl;
+//		//if (((layerInd + 1) % 100 == 0) || ((layerInd + 1) == layers)) cout << endl;
+//
+//	}
+//	cout << "------------------------------------------- Collision detection OK!" << endl;
+//}
+//
+//QHULLSET* fiveAxisPoint::buildConvexHull_extruderHead(QMeshPatch* eHead) {
+//	facetT* facet;		vertexT* vertex, ** vertexp;
+//	int i, index, pntNum, num, stIndex;			float pos[3];
+//	double vec[3][3], dir[3], v1[3], v2[3], pp[3];
+//	QHULLSET* newConvexFront = NULL; // new convexhull used for checking
+//
+//	//-------------------------------------------------------------------------------------
+//	//	Step 1: initialization
+//
+//	pntNum = eHead->GetNodeNumber();
+//	double* pntArray = (double*)malloc(sizeof(double) * 3 * pntNum); //points use to compute convex hull
+//
+//	int nodeIndex = 0;
+//	for (GLKPOSITION posMesh = eHead->GetNodeList().GetHeadPosition(); posMesh != nullptr;) {
+//		QMeshNode* node = (QMeshNode*)eHead->GetNodeList().GetNext(posMesh);
+//		node->GetCoord3D(pp[0], pp[1], pp[2]);
+//		for (int i = 0; i < 3; i++)
+//			pntArray[nodeIndex * 3 + i] = pp[i];
+//		nodeIndex++;
+//	}
+//
+//	//-------------------------------------------------------------------------------------
+//	//	Step 2: computaing the convex-hull
+//	qh_init_A(stdin, stdout, stderr, 0, NULL);
+//	qh_initflags("Qt Qx");
+//	qh_init_B(pntArray, pntNum, 3, false);
+//	qh_qhull();
+//	qh_check_output();
+//	qh_triangulate();
+//	if (qh VERIFYoutput && !qh STOPpoint && !qh STOPcone) qh_check_points();
+//
+//	//-------------------------------------------------------------------------------------
+//	//	Step 3: output the results of convex-hull computation
+//	int nodeNum = 0, faceNum = 0;
+//	faceNum = qh_qh.num_facets;		nodeNum = qh_qh.num_vertices;
+//	//printf("Convex-Hull: %d faces with %d vertices\n",faceNum,nodeNum);
+//	if (faceNum > 0 && nodeNum > 0) {
+//		newConvexFront = _mallocMemoryConvexHull(faceNum, nodeNum);
+//		//---------------------------------------------------------------------------------
+//		index = 0;
+//		FORALLvertices{
+//			vertex->id = index;	// before this assignment, "vertex->id" contains the id of input vertices
+//		newConvexFront->vertPos[index * 3] = vertex->point[0];
+//		newConvexFront->vertPos[index * 3 + 1] = vertex->point[1];
+//		newConvexFront->vertPos[index * 3 + 2] = vertex->point[2];
+//		index++;
+//		}
+//			//---------------------------------------------------------------------------------
+//		index = 0;
+//		FORALLfacets{
+//			newConvexFront->normalVec[index * 3] = facet->normal[0];
+//		newConvexFront->normalVec[index * 3 + 1] = facet->normal[1];
+//		newConvexFront->normalVec[index * 3 + 2] = facet->normal[2];
+//		newConvexFront->offset[index] = facet->offset;
+//		//	It has been verified all normal[] vectors generated by qhull library are pointing outwards and are unit-vectors 
+//		//		(verified by the function -- QuadTrglMesh* convexHullGeneration(QuadTrglMesh* inputMesh)  ).
+//
+//		int i = 0;
+//		FOREACHvertex_(facet->vertices) {
+//			newConvexFront->faceTable[index * 3 + i] = vertex->id + 1; //index start from 1;
+//			//newConvexFront->faceTable[index * 3 + i] = vertex->id; //index start from 0;
+//
+//			SET(vec[i],vertex->point);
+//			i++;
+//			if (i >= 3) break; // Note that it could be a facet with more than 3 vertices if not applying "qh_triangulate();"
+//		}
+//
+//		//-----------------------------------------------------------------------------
+//		//	Check if the vertices on this face is given in the anti-clockwise order
+//		SUB(v1,vec[1],vec[0]);
+//		SUB(v2,vec[2],vec[0]);
+//		CROSS(dir,v1,v2);
+//		if (DOT(dir,facet->normal) < 0) {
+//			unsigned int temp = newConvexFront->faceTable[index * 3];
+//			newConvexFront->faceTable[index * 3] = newConvexFront->faceTable[index * 3 + 2];
+//			newConvexFront->faceTable[index * 3 + 2] = temp;
+//		}
+//
+//		index++;
+//		}
+//	}
+//
+//	//-------------------------------------------------------------------------------------
+//	//	Step 4: free the memory
+//	int curlong, totlong;
+//	qh_freeqhull(false);
+//	qh_memfreeshort(&curlong, &totlong);
+//	if (curlong || totlong) fprintf(stderr, "qhull internal warning (main): did not free %d bytes of long memory (%d pieces)\n", totlong, curlong);
+//	//-------------------------------------------------------------------------------------
+//	free(pntArray);
+//
+//	return newConvexFront;
+//}
+//
+//QHULLSET* fiveAxisPoint::_mallocMemoryConvexHull(int faceNum, int vertNum)
+//{
+//	QHULLSET* pConvexHull;
+//
+//	pConvexHull = (QHULLSET*)malloc(sizeof(QHULLSET));
+//	pConvexHull->faceNum = faceNum;
+//	pConvexHull->normalVec = (double*)malloc(sizeof(double) * 3 * faceNum);
+//	pConvexHull->offset = (double*)malloc(sizeof(double) * faceNum);
+//
+//	pConvexHull->faceTable = (unsigned int*)malloc(sizeof(unsigned int) * 3 * faceNum);
+//
+//	pConvexHull->vertNum = vertNum;
+//	pConvexHull->vertPos = (double*)malloc(sizeof(double) * 3 * vertNum);
+//
+//	return pConvexHull;
+//}
+//
+//bool fiveAxisPoint::_isPntInsideConvexHull(QHULLSET* pConvexHull, double pnt[]) {
+//	double normVec[3], offValue;
+//
+//	for (int i = 0; i < pConvexHull->faceNum; i++) {
+//		normVec[0] = pConvexHull->normalVec[i * 3];
+//		normVec[1] = pConvexHull->normalVec[i * 3 + 1];
+//		normVec[2] = pConvexHull->normalVec[i * 3 + 2];
+//		offValue = pConvexHull->offset[i];
+//		if ((DOT(pnt, normVec) + offValue) >= 0.0) return false;
+//
+//	}
+//	return true;
+//}
+//
+//void fiveAxisPoint::_freeMemoryConvexHull(QHULLSET*& pConvexHull)
+//{
+//	free((pConvexHull->normalVec));
+//	free((pConvexHull->offset));
+//	free((pConvexHull->faceTable));
+//	free((pConvexHull->vertPos));
+//	free(pConvexHull);
+//
+//	pConvexHull = NULL;
+//}

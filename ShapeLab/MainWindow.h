@@ -52,11 +52,11 @@ private:
 	DeformTet *Deformation;
 
 private:// functions for G code Generation.
-    void natSort(string dirctory, vector<string>& fileNameCell);	// function for Nature Sorting.
-    void readWayPointData(string packName);                         // function for WayPoint Data loading
-    void readSliceData(string sliceSetName);                        // function for Slice Data loading
-    void readExtruderHeadfile(string extruderHeadName);             // function for Extruder Head file loading
-    void readPlatformfile(string platformName);                     // function for Platform file loading
+    //void natSort(string dirctory, vector<string>& fileNameCell);	// function for Nature Sorting.
+    //void readWayPointData(string packName);                         // function for WayPoint Data loading
+    //void readSliceData(string sliceSetName);                        // function for Slice Data loading
+    //void readExtruderHeadfile(string extruderHeadName);             // function for Extruder Head file loading
+    //void readPlatformfile(string platformName);                     // function for Platform file loading
 
     vector<string> wayPointFileCell;	                            // Waypoints Dir Files
     vector<string> sliceSetFileCell;	                            // Layers Dir Files
@@ -81,7 +81,7 @@ private slots:
 	/*This is shape up deformation*/
 	void runShapeUpDeformation(); 
 	/*This is Gcode Generation*/
-    void runGcodeGeneration();
+    //void runGcodeGeneration();
 };
 
 #endif // MAINWINDOW_H

@@ -14,5 +14,4 @@ void waypoints::translation()
 	cout << initWayPoint << endl;
 	cout << initWayPoint.col(0) << endl;*/
 
-	cout <<
 }

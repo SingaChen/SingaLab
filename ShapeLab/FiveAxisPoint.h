@@ -20,11 +20,12 @@ using namespace Eigen;
 
 class QMeshPatch;
 class PolygenMesh;
-typedef struct qHullSet {
-	int faceNum;	double* normalVec;	double* offset;
-	int vertNum;	double* vertPos;
-	unsigned int* faceTable;	//	Note that: the index starts from '1'
-}QHULLSET;
+//typedef struct qHullSet 
+//{
+//	int faceNum;	double* normalVec;	double* offset;
+//	int vertNum;	double* vertPos;
+//	unsigned int* faceTable;	//	Note that: the index starts from '1'
+//}QHULLSET;
 
 class fiveAxisPoint
 {
@@ -43,7 +44,7 @@ public:
 	void getLayerHeight(PolygenMesh* polygenMesh_Slices, PolygenMesh* polygenMesh_Waypoints, bool varyThickness_switch);
 	void getUpZwayPnts(PolygenMesh* polygenMesh_Waypoints);
 	void singularityOpt(PolygenMesh* polygenMesh_Waypoints);
-	void detectCollision(PolygenMesh* polygenMesh_Waypoints, PolygenMesh* polygenMesh_extruderHead, bool func_switch);
+	//void detectCollision(PolygenMesh* polygenMesh_Waypoints, PolygenMesh* polygenMesh_extruderHead, bool func_switch);
 	void height2E(PolygenMesh* polygenMesh_Waypoints, bool func_switch);
 	void writeGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir);
 	void isLargeLength(QMeshPatch* WayPointPatch);
@@ -61,8 +62,8 @@ public:
 	void optimizationC(QMeshPatch* WayPointPatch);
 	void testXYZBCE(QMeshPatch* WayPointPatch, string Dir, bool testSwitch);
 	void testLayerHeight(QMeshPatch* WayPointPatch, string Dir, bool testSwitch);
-	QHULLSET* buildConvexHull_extruderHead(QMeshPatch* eHead);
-	QHULLSET* _mallocMemoryConvexHull(int faceNum, int vertNum);
-	bool _isPntInsideConvexHull(QHULLSET* pConvexHull, double pnt[]);
-	void _freeMemoryConvexHull(QHULLSET*& pConvexHull);
+	//QHULLSET* buildConvexHull_extruderHead(QMeshPatch* eHead);
+	//QHULLSET* _mallocMemoryConvexHull(int faceNum, int vertNum);
+	//bool _isPntInsideConvexHull(QHULLSET* pConvexHull, double pnt[]);
+	//void _freeMemoryConvexHull(QHULLSET*& pConvexHull);
 };
