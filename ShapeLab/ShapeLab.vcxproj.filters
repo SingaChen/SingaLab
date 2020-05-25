@@ -56,13 +56,7 @@
     <ClCompile Include="DeformTet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GcodeGeneration.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="SORODeform.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Waypoints.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FiveAxisPoint.cpp">
@@ -210,17 +204,11 @@
     <ClInclude Include="dirent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GcodeGeneration.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="SORODeform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="alphanum.hpp">
       <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Waypoints.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FiveAxisPoint.h">
       <Filter>Header Files</Filter>

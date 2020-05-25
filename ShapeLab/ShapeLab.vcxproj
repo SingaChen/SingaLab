@@ -140,11 +140,9 @@
   <ItemGroup>
     <ClCompile Include="DeformTet.cpp" />
     <ClCompile Include="FiveAxisPoint.cpp" />
-    <ClCompile Include="GcodeGeneration.cpp" />
     <ClCompile Include="MainWindow.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="SORODeform.cpp" />
-    <ClCompile Include="Waypoints.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="MainWindow.h">
@@ -165,7 +163,6 @@
     <ClCompile Include="release\moc_MainWindow.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClInclude Include="Waypoints.h" />
     <ClInclude Include="FiveAxisPoint.h" />
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <FileType>Document</FileType>
@@ -192,7 +189,6 @@
     <ClInclude Include="alphanum.hpp" />
     <ClInclude Include="DeformTet.h" />
     <ClInclude Include="dirent.h" />
-    <ClInclude Include="GcodeGeneration.h" />
     <ClInclude Include="SORODeform.h" />
     <ClInclude Include="ui_MainWindow.h" />
   </ItemGroup>
