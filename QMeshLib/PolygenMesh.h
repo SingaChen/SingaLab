@@ -6,11 +6,27 @@
 #include "../GLKLib/GLKLib.h"
 #include "../GLKLib/GLKObList.h"
 
+#include "../QMeshLib/QMeshTetra.h"
+#include "../QMeshLib/QMeshPatch.h"
+#include "../QMeshLib/QMeshFace.h"
+#include "../QMeshLib/QMeshEdge.h"
+#include "../QMeshLib/QMeshNode.h"
+
+typedef enum mesh_type {
+    //for Gcode Generation
+    WAYPOINT,
+    LAYER,
+    CNC_PARTS
+};
+
+
 class PolygenMesh : public GLKEntity
 {
 public:
     PolygenMesh();
     ~PolygenMesh();
+
+    mesh_type meshType;
 
     void ImportOBJFile(char *filename, std::string modelName);
 	void ImportTETFile(char *filename, std::string modelName);
@@ -49,6 +65,11 @@ public:
     void _buildDrawFaceNormalList();
     void _buildDrawNodeNormalList();
 //    void _buildDrawPreMeshList();
+
+    void drawSingleEdge(QMeshEdge* edge);
+    void drawSingleNode(QMeshNode* node);
+    void drawSingleFace(QMeshFace* face);
+
     void _changeValueToColor(int nType, float & nRed, float & nGreen, float & nBlue);
     void _changeValueToColor(double maxValue, double minValue, double Value,
                                  float & nRed, float & nGreen, float & nBlue);

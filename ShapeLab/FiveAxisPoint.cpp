@@ -1,6 +1,9 @@
 #include "FiveAxisPoint.h"
 #include "alphanum.hpp"
 
+#define PI		3.141592654
+#define DEGREE_TO_ROTATE(x)		0.0174532922222*x
+#define ROTATE_TO_DEGREE(x)		57.295780490443*x
 
 void fiveAxisPoint::natSort(QString dirctory, vector<string>& fileNameCell)
 {
@@ -30,7 +33,7 @@ void fiveAxisPoint::natSort(QString dirctory, vector<string>& fileNameCell)
 	sort(fileNameCell.begin(), fileNameCell.end(), doj::alphanum_less<std::string>());
 }
 
-void fiveAxisPoint::readWayPointData(QString packName, GLKObList* polygenMeshList, vector<string> wayPointFileCell, GLKLib* pGLK)
+void fiveAxisPoint::readWayPointData(QString packName, bool Yup2Zup_switch, double Zoff, double Xoff, double Yoff, GLKObList* polygenMeshList, vector<string> wayPointFileCell, GLKLib* pGLK)
 {
 	// isbuiled
 	
@@ -40,8 +43,12 @@ void fiveAxisPoint::readWayPointData(QString packName, GLKObList* polygenMeshLis
 		if ("Waypoints" == polygenMesh->getModelName()) return;
 	}
 
+	// get all num of waypoints
+	long waypntNum = 0;
+
 	PolygenMesh* waypointSet = new PolygenMesh;
 	waypointSet->setModelName("Waypoints");
+	waypointSet->meshType = WAYPOINT;
 
 	//read slice files and build mesh_patches
 	char filename[1024];
@@ -55,6 +62,7 @@ void fiveAxisPoint::readWayPointData(QString packName, GLKObList* polygenMeshLis
 		QMeshPatch* waypoint = new QMeshPatch;
 		waypoint->SetIndexNo(waypointSet->GetMeshList().GetCount()); //index begin from 0
 		waypointSet->GetMeshList().AddTail(waypoint);
+		waypoint->waypointPatchName = wayPointFileCell[i].data();
 
 		// isSupportLayer
 		string::size_type supportFlag = wayPointFileCell[i].find("S");
@@ -63,7 +71,8 @@ void fiveAxisPoint::readWayPointData(QString packName, GLKObList* polygenMeshLis
 
 		//cout << waypoint->isSupportLayer << endl;
 
-		waypoint->inputPosNorFile(filename, waypoint->isSupportLayer);
+		waypoint->inputPosNorFile(filename, waypoint->isSupportLayer, Yup2Zup_switch,Zoff,Xoff,Yoff);
+		waypntNum += waypoint->GetNodeNumber();
 	}
 	////Display
 	waypointSet->BuildGLList(waypointSet->m_bVertexNormalShading);
@@ -72,7 +81,7 @@ void fiveAxisPoint::readWayPointData(QString packName, GLKObList* polygenMeshLis
 	std::cout << "------------------------------------------- WayPoints Load OK!" << std::endl;
 }
 
-void fiveAxisPoint::readSliceData(QString sliceSetName, GLKObList* polygenMeshList, vector<string> sliceSetFileCell, GLKLib* pGLK)
+void fiveAxisPoint::readSliceData(QString sliceSetName, bool Yup2Zup_switch, double Zoff, double Xoff, double Yoff, GLKObList* polygenMeshList, vector<string> sliceSetFileCell, GLKLib* pGLK)
 {
 	// isbuiled
 	for (GLKPOSITION pos = polygenMeshList->GetHeadPosition(); pos != nullptr;) {
@@ -82,6 +91,7 @@ void fiveAxisPoint::readSliceData(QString sliceSetName, GLKObList* polygenMeshLi
 
 	PolygenMesh* sliceSet = new PolygenMesh;
 	sliceSet->setModelName("Slices");
+	sliceSet->meshType = LAYER;
 
 	//read slice files and build mesh_patches
 	char filename[1024];
@@ -92,8 +102,24 @@ void fiveAxisPoint::readSliceData(QString sliceSetName, GLKObList* polygenMeshLi
 		QMeshPatch* slice = new QMeshPatch;
 		slice->SetIndexNo(sliceSet->GetMeshList().GetCount()); //index begin from 0
 		sliceSet->GetMeshList().AddTail(slice);
-		slice->inputOFFFile(filename, false);
+		slice->layerPatchName = sliceSetFileCell[i].data();
 
+		// isSupportLayer
+		string::size_type supportFlag = sliceSetFileCell[i].find("S");
+		if (supportFlag == string::npos)
+			slice->isSupportLayer = false;
+		else
+			slice->isSupportLayer = true;
+
+		//choose the method for reading files with different types
+		string targetFileType = ".obj";
+		string fileName = sliceSetFileCell[i].data();
+		if (fileName.find(targetFileType)) {
+			slice->inputOBJFile(filename, false, Yup2Zup_switch, Zoff, Xoff, Yoff);
+		}
+		else {
+			slice->inputOFFFile(filename, false, Yup2Zup_switch, Zoff, Xoff, Yoff);
+		}
 	}
 	//Display
 	sliceSet->BuildGLList(sliceSet->m_bVertexNormalShading);
@@ -112,6 +138,7 @@ void fiveAxisPoint::readExtruderHeadfile(string extruderHeadName, GLKObList* pol
 
 	PolygenMesh* extruderHead = new PolygenMesh;
 	extruderHead->setModelName("ExtruderHead");
+	extruderHead->meshType = CNC_PARTS;
 
 	//read slice files and build mesh_patches
 	char filename[1024];
@@ -122,7 +149,30 @@ void fiveAxisPoint::readExtruderHeadfile(string extruderHeadName, GLKObList* pol
 	QMeshPatch* eHead = new QMeshPatch;
 	eHead->SetIndexNo(extruderHead->GetMeshList().GetCount()); //index begin from 0
 	extruderHead->GetMeshList().AddTail(eHead);
-	eHead->inputOBJFile(filename, false);
+	eHead->inputOBJFile(filename, false, false, 0.0);
+
+	// enlarge 1.1x eHead
+	for (GLKPOSITION eHeadPos = eHead->GetNodeList().GetHeadPosition(); eHeadPos;) {
+		QMeshNode* eHeadNode = (QMeshNode*)eHead->GetNodeList().GetNext(eHeadPos);
+
+		double xx, yy, zz;
+		eHeadNode->GetCoord3D(xx, yy, zz);
+		if (xx == 0.0 && yy == 0.0 && zz == 0.0) {
+			eHeadNode->isPrintPnt = true;
+		}
+
+		xx *= 1.1; yy *= 1.1; zz *= 1.1;
+		eHeadNode->SetCoord3D(xx, yy, zz);
+	}
+	// record the original(= print type: Zup + 0,0,0 ) message
+	for (GLKPOSITION eHeadPos = eHead->GetNodeList().GetHeadPosition(); eHeadPos;) {
+		QMeshNode* node = (QMeshNode*)eHead->GetNodeList().GetNext(eHeadPos);
+		double pp[3];
+		node->GetCoord3D(pp[0], pp[1], pp[2]);
+		node->m_printPostion[0] = pp[0];
+		node->m_printPostion[1] = pp[1];
+		node->m_printPostion[2] = pp[2];
+	}
 
 	////Display
 	extruderHead->BuildGLList(extruderHead->m_bVertexNormalShading);
@@ -140,8 +190,9 @@ void fiveAxisPoint::readPlatformfile(string platformName, GLKObList* polygenMesh
 		if ("PrintPlatform" == polygenMesh->getModelName()) return;
 	}
 
-	PolygenMesh* extruderHead = new PolygenMesh;
-	extruderHead->setModelName("PrintPlatform");
+	PolygenMesh* platform = new PolygenMesh;
+	platform->setModelName("PrintPlatform");
+	platform->meshType = CNC_PARTS;
 
 	//read slice files and build mesh_patches
 	char filename[1024];
@@ -149,145 +200,156 @@ void fiveAxisPoint::readPlatformfile(string platformName, GLKObList* polygenMesh
 	sprintf(filename, "%s%s", "../1_GcodeGeneModel/", platformName.c_str());
 	//cout << filename << endl;
 
-	QMeshPatch* eHead = new QMeshPatch;
-	eHead->SetIndexNo(extruderHead->GetMeshList().GetCount()); //index begin from 0
-	extruderHead->GetMeshList().AddTail(eHead);
-	eHead->inputOBJFile(filename, false);
+	QMeshPatch* platformPatch = new QMeshPatch;
+	platformPatch->SetIndexNo(platform->GetMeshList().GetCount()); //index begin from 0
+	platform->GetMeshList().AddTail(platformPatch);
+	platformPatch->inputOBJFile(filename, false, false, 0.0);
+
+	// record the original(= print type: Zup + 0,0,0) message
+	for (GLKPOSITION Pos = platformPatch->GetNodeList().GetHeadPosition(); Pos;) {
+		QMeshNode* node = (QMeshNode*)platformPatch->GetNodeList().GetNext(Pos);
+		double pp[3];
+		node->GetCoord3D(pp[0], pp[1], pp[2]);
+		node->m_printPostion[0] = pp[0];
+		node->m_printPostion[1] = pp[1];
+		node->m_printPostion[2] = pp[2];
+	}
 
 	////Display
-	extruderHead->BuildGLList(extruderHead->m_bVertexNormalShading);
-	polygenMeshList->AddTail(extruderHead);
-	pGLK->AddDisplayObj(extruderHead, true);
+	platform->BuildGLList(platform->m_bVertexNormalShading);
+	polygenMeshList->AddTail(platform);
+	pGLK->AddDisplayObj(platform, true);
 
 	cout << "------------------------------------------- Platform Load OK!" << endl;
 }
 
-void fiveAxisPoint::getLayerHeight(PolygenMesh* polygenMesh_Slices, PolygenMesh* polygenMesh_Waypoints, bool varyThickness_switch) {
+void fiveAxisPoint::getLayerHeight(PolygenMesh* polygenMesh_Slices, PolygenMesh* polygenMesh_Waypoints, PolygenMesh* polygenMesh_PrintPlatform,bool varyThickness_switch, int GcodeGeneRange_From, int GcodeGeneRange_To, bool upPlate2Height_switch, double upZdist, double Xmove, double Ymove) {
 
 	if (varyThickness_switch == false) return;
 
-	// write the layerHeight for the 1st layer
-	QMeshPatch* WayPointPatch_1st = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetHead();
+	cout << "------------------------------------------- Layer Height Calculation Running ..." << endl;
+	long time = clock();
 
-	for (GLKPOSITION Pos = WayPointPatch_1st->GetNodeList().GetHeadPosition(); Pos;) {
-		QMeshNode* Node = (QMeshNode*)WayPointPatch_1st->GetNodeList().GetNext(Pos);
-
-		Node->m_layerHeight = 0.500000;
+	// get the patch point of polygenMesh_PrintPlatform
+	QMeshPatch* patch_PrintPlatform = (QMeshPatch*)polygenMesh_PrintPlatform->GetMeshList().GetHead();
+	// move up platform for LayerHeight calculation, if need
+	if (upPlate2Height_switch == true) {
+		for (GLKPOSITION Pos = patch_PrintPlatform->GetNodeList().GetHeadPosition(); Pos;) {
+			QMeshNode* Node = (QMeshNode*)patch_PrintPlatform->GetNodeList().GetNext(Pos);
+			double pp[3];
+			Node->GetCoord3D(pp[0], pp[1], pp[2]);
+			pp[0] += Xmove;
+			pp[1] += Ymove;
+			pp[2] += upZdist;//+
+			Node->SetCoord3D(pp[0], pp[1], pp[2]);
+		}
 	}
+	int Core = 12;
+#pragma omp parallel
+	{
+#pragma omp for  
+		for (int omptime = 0; omptime < Core; omptime++) {
 
-	// topLayer --> layer on the highest place [travel head to tail]
-	for (GLKPOSITION Pos = polygenMesh_Slices->GetMeshList().GetHeadPosition(); Pos;) {
-		QMeshPatch* topLayer = (QMeshPatch*)polygenMesh_Slices->GetMeshList().GetNext(Pos); // order: get data -> pnt move
-		// without bottom layer so quit
-		if (topLayer == (QMeshPatch*)polygenMesh_Slices->GetMeshList().GetHead()) { continue; }
+			// topLayer --> layer on the highest place [travel head to tail]
+			for (GLKPOSITION Pos = polygenMesh_Slices->GetMeshList().GetHeadPosition(); Pos;) {
+				QMeshPatch* topLayer = (QMeshPatch*)polygenMesh_Slices->GetMeshList().GetNext(Pos); // order: get data -> pnt move
 
-		vector<QMeshPatch*> bottomLayers;
-		int layerNum = 10;
-		// detect the number of bottom layer
+				if (topLayer->GetIndexNo() < GcodeGeneRange_From || topLayer->GetIndexNo() > GcodeGeneRange_To) continue;
 
-		if (topLayer->GetIndexNo() < layerNum) // GetIndexNo = Index velue [0 ... n]
-		{
-			GLKPOSITION Pos = polygenMesh_Slices->GetMeshList().Find(topLayer)->prev;
-			bottomLayers.resize(topLayer->GetIndexNo()); // speed up vector load by allocate space before using;
-			for (int i = 0; i < topLayer->GetIndexNo(); i++) {
-				bottomLayers[i] = (QMeshPatch*)polygenMesh_Slices->GetMeshList().GetPrev(Pos);
-			}
-		}
-		else {
-			bottomLayers.resize(layerNum);
-			GLKPOSITION Pos = polygenMesh_Slices->GetMeshList().Find(topLayer)->prev;
-			for (int i = 0; i < layerNum; i++) {
-				bottomLayers[i] = (QMeshPatch*)polygenMesh_Slices->GetMeshList().GetPrev(Pos);
-			}
-		}
+				if (topLayer->GetIndexNo() % Core != omptime) continue;
 
-		//--build PQP model
-		vector<PQP_Model*> bLayerPQP;
-		bLayerPQP.resize(bottomLayers.size());
-		for (int i = 0; i < bottomLayers.size(); i++) {
-			if (bottomLayers[i]->GetNodeNumber() < 3) continue;
-			// build PQP model for bottom layers
-			PQP_Model* pqpModel = new PQP_Model();
-			pqpModel->BeginModel();  int index = 0;
-			PQP_REAL p1[3], p2[3], p3[3];
+				vector<QMeshPatch*> bottomLayers;
+				int layerNum = 30; //the number of detected bottom layer
 
-			for (GLKPOSITION Pos = bottomLayers[i]->GetFaceList().GetHeadPosition(); Pos;) {
-				QMeshFace* Face = (QMeshFace*)bottomLayers[i]->GetFaceList().GetNext(Pos);
+				bottomLayers.push_back(patch_PrintPlatform);
+				// construct a bottomLayers[i] to store the point of bottom layers for every toplayer
+				for (GLKPOSITION beforePos = polygenMesh_Slices->GetMeshList().Find(topLayer)->prev; beforePos;) {
+					QMeshPatch* beforePatch = (QMeshPatch*)polygenMesh_Slices->GetMeshList().GetPrev(beforePos);
 
-				Face->GetNodeRecordPtr(0)->GetCoord3D(p1[0], p1[1], p1[2]);
-				Face->GetNodeRecordPtr(1)->GetCoord3D(p2[0], p2[1], p2[2]);
-				Face->GetNodeRecordPtr(2)->GetCoord3D(p3[0], p3[1], p3[2]);
-
-				pqpModel->AddTri(p1, p2, p3, index);
-				index++;
-
-			}
-			pqpModel->EndModel();
-			bLayerPQP[i] = pqpModel;
-		}
-
-		double pp[3];
-
-		int layerIndex = topLayer->GetIndexNo();
-
-		GLKPOSITION WayPointPatch_Pos = polygenMesh_Waypoints->GetMeshList().FindIndex(layerIndex);
-		QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetAt(WayPointPatch_Pos);
-
-		for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
-			QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
-
-			pp[0] = Node->m_orginalPostion[0];
-			pp[1] = Node->m_orginalPostion[1];
-			pp[2] = Node->m_orginalPostion[2];
-
-			double minDist = 99999.99;
-			for (int i = 0; i < bottomLayers.size(); i++) {
-				if (bottomLayers[i]->GetNodeNumber() < 3) continue;
-
-				PQP_DistanceResult dres; dres.last_tri = bLayerPQP[i]->last_tri;
-				PQP_REAL p[3];
-				p[0] = pp[0]; p[1] = pp[1]; p[2] = pp[2];
-				PQP_Distance(&dres, bLayerPQP[i], p, 0.0, 0.0);
-
-				double Dist = dres.Distance(); // distance of this layer
-				if (minDist > Dist) minDist = Dist;
-			}
-
-			//cout << minDist << endl;
-			Node->m_layerHeight = minDist;
-		}
-
-		// Get the final result; Temporary processing
-		for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
-			QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
-
-			double Dist_value = Node->m_layerHeight;
-			if (Dist_value > 0.8) {
-
-				if (Node->GetIndexNo() == 0)
-					Dist_value = 0.5;
-				else {
-					GLKPOSITION prevPos = WayPointPatch->GetNodeList().Find(Node)->prev;
-					QMeshNode* prevNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(prevPos);
-					Dist_value = prevNode->m_layerHeight;
+					bottomLayers.push_back(beforePatch);
+					if (bottomLayers.size() > layerNum) break;
+					//std::cout << "current bottomLayers Index: " << beforePatch->GetIndexNo() << std::endl;
+					//std::cout << "current topLayers Index: " << topLayer->GetIndexNo() << std::endl;
 				}
+				//std::cout << "------bottomLayers all size: " << bottomLayers.size() << std::endl << std::endl;
+
+
+				//--build PQP model
+				vector<PQP_Model*> bLayerPQP;
+				bLayerPQP.resize(bottomLayers.size());
+				for (int i = 0; i < bottomLayers.size(); i++) {
+					if (bottomLayers[i]->GetNodeNumber() < 3) continue;
+					// build PQP model for bottom layers
+					PQP_Model* pqpModel = new PQP_Model();
+					pqpModel->BeginModel();  int index = 0;
+					PQP_REAL p1[3], p2[3], p3[3];
+
+					for (GLKPOSITION Pos = bottomLayers[i]->GetFaceList().GetHeadPosition(); Pos;) {
+						QMeshFace* Face = (QMeshFace*)bottomLayers[i]->GetFaceList().GetNext(Pos);
+
+						Face->GetNodeRecordPtr(0)->GetCoord3D(p1[0], p1[1], p1[2]);
+						Face->GetNodeRecordPtr(1)->GetCoord3D(p2[0], p2[1], p2[2]);
+						Face->GetNodeRecordPtr(2)->GetCoord3D(p3[0], p3[1], p3[2]);
+
+						pqpModel->AddTri(p1, p2, p3, index);
+						index++;
+
+					}
+					pqpModel->EndModel();
+					bLayerPQP[i] = pqpModel;
+				}//--build PQP model END
+
+				double pp[3];
+				int layerIndex = topLayer->GetIndexNo();
+
+				GLKPOSITION WayPointPatch_Pos = polygenMesh_Waypoints->GetMeshList().FindIndex(layerIndex);
+				QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetAt(WayPointPatch_Pos);
+
+				//GLKPOSITION topLayerPatch_Pos = polygenMesh_Waypoints->GetMeshList().FindIndex(layerIndex);
+				//QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetAt(topLayerPatch_Pos);
+
+				for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
+					QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
+
+					pp[0] = Node->m_printPostion[0];	pp[1] = Node->m_printPostion[1];	pp[2] = Node->m_printPostion[2];
+
+					double minDist = 99999.99;
+					for (int i = 0; i < bottomLayers.size(); i++) {
+						if (bottomLayers[i]->GetNodeNumber() < 3) continue;
+
+						PQP_DistanceResult dres; dres.last_tri = bLayerPQP[i]->last_tri;
+						PQP_REAL p[3];
+						p[0] = pp[0]; p[1] = pp[1]; p[2] = pp[2];
+						PQP_Distance(&dres, bLayerPQP[i], p, 0.0, 0.0);
+
+						double Dist = dres.Distance(); // distance of this layer
+						if (minDist > Dist) minDist = Dist;
+					}
+					// cout << minDist << endl;
+					Node->m_layerHeight = minDist;
+				}
+
+				//	free memory
+				for (int i = 0; i < bottomLayers.size(); i++) { delete bLayerPQP[i]; }
+
 			}
-			Node->m_layerHeight = Dist_value;
 		}
-
-		//	free memory
-		for (int i = 0; i < bottomLayers.size(); i++) { delete bLayerPQP[i]; }
-
-		/*****  Test layerHeight func ******/
-		testLayerHeight(WayPointPatch, "TestLayerHeight", true);
-		/**********************/
-
-		cout << ".";
-		if (((topLayer->GetIndexNo()) % 100 == 0) ||
-			((topLayer->GetIndexNo() + 1) == polygenMesh_Waypoints->GetMeshList().GetCount()))
-			cout << endl;
 	}
-	cout << "------------------------------------------- Layer Height Calculate OK!" << endl;
+
+	// resume platform after LayerHeight calculation, if need
+	if (upPlate2Height_switch == true) {
+		for (GLKPOSITION Pos = patch_PrintPlatform->GetNodeList().GetHeadPosition(); Pos;) {
+			QMeshNode* Node = (QMeshNode*)patch_PrintPlatform->GetNodeList().GetNext(Pos);
+			double pp[3];
+			Node->GetCoord3D(pp[0], pp[1], pp[2]);
+			pp[0] -= Xmove;
+			pp[1] -= Ymove;
+			pp[2] -= upZdist;//-
+			Node->SetCoord3D(pp[0], pp[1], pp[2]);
+		}
+	}
+	printf(" TIMER -- Layer Height Calculation takes %ld ms.\n", clock() - time);
+	cout << "------------------------------------------- Layer Height Calculation Finish!\n" << endl;
 }
 
 void fiveAxisPoint::getUpZwayPnts(PolygenMesh* polygenMesh_Waypoints) {
@@ -323,63 +385,78 @@ void fiveAxisPoint::getUpZwayPnts(PolygenMesh* polygenMesh_Waypoints) {
 
 	}
 
-	//int layerNum = wayPntsCell.size();
-	//for (int i = 0; i < layerNum; i++) {
-	//	int lines = wayPntsCell[i].rows();
-	//	for (int ii = 0; ii < lines; ii++) {
-
-	//		//double tempPx = wayPntsCell[i](ii, 0);
-	//		double tempPy = wayPntsCell[i](ii, 2);
-	//		double tempPz = wayPntsCell[i](ii, 1) - 4;
-	//		//double tempNx = wayPntsCell[i](ii, 3);
-	//		double tempNy = wayPntsCell[i](ii, 5);
-	//		double tempNz = wayPntsCell[i](ii, 4);
-
-	//		wayPntsCell[i](ii, 1) = tempPy;
-	//		wayPntsCell[i](ii, 2) = tempPz;
-	//		wayPntsCell[i](ii, 4) = tempNy;
-	//		wayPntsCell[i](ii, 5) = tempNz;
-	//	}
-	//}
+	
 }
 
-void fiveAxisPoint::singularityOpt(PolygenMesh* polygenMesh_Waypoints) {
+void fiveAxisPoint::singularityOpt(PolygenMesh* polygenMesh_Waypoints, int GcodeGeneRange_From, int GcodeGeneRange_To) {
 
-	//for (int i = srtLayer - 1; i < endLayer; i++) {
-	for (GLKPOSITION Pos = polygenMesh_Waypoints->GetMeshList().GetHeadPosition(); Pos;) {
-		QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetNext(Pos);
+	std::cout << "------------------------------------------- XYZBCD Calculation running ... " << std::endl;
+	long time = clock();
 
-		//MatrixXf layerPntNor = wayPntsCell[i];
-		//MatrixXf layerXYZBCE = MatrixXf::Zero(layerPntNor.rows(), 6);
-		//MatrixXf layerJumpflag = MatrixXf::Zero(layerPntNor.rows(), 1);
+	int Core = 12;
+#pragma omp parallel
+	{
+#pragma omp for  
+		for (int omptime = 0; omptime < Core; omptime++) {
 
+			for (GLKPOSITION Pos = polygenMesh_Waypoints->GetMeshList().GetHeadPosition(); Pos;) {
+				QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetNext(Pos);
 
-		//isLargeLength(layerPntNor, layerXYZBCE, layerJumpflag);
-		isLargeLength(WayPointPatch);
-		//jumpflagCell[i] = layerJumpflag;
-		normalSmooth(WayPointPatch, 10, true);
+				if (WayPointPatch->GetIndexNo() < GcodeGeneRange_From || WayPointPatch->GetIndexNo() > GcodeGeneRange_To) continue;
 
-		double lambda = 7.3;
-		getRawCdata(WayPointPatch, lambda);
-		MatrixXf sectionTable;
-		getDangerSec(WayPointPatch, sectionTable);
-		getNewPntNor(WayPointPatch, sectionTable, lambda);
-		normalSmooth(WayPointPatch, 2, true);
+				if (WayPointPatch->GetIndexNo() % Core != omptime) continue;
 
-		getXYZBCE(WayPointPatch, 0);
-		optimizationC(WayPointPatch);
+				getD(WayPointPatch);
+				normalSmooth(WayPointPatch, 10, true);
 
-		/*****  Test func ******/
-		testXYZBCE(WayPointPatch, "TestXYZBCE", true);
-		/**********************/
+				double lambda = 7;
+				getRawCdata(WayPointPatch, lambda);
 
-		cout << ".";
-		if (((WayPointPatch->GetIndexNo() + 1) % 100 == 0) ||
-			((WayPointPatch->GetIndexNo() + 1) == polygenMesh_Waypoints->GetMeshList().GetCount())) {
-			cout << endl;
+				//std::vector<QMeshPatch*> layerPatchSet;
+				// 
+				//int setIndex = 0;
+				//for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
+				//	QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
+				//	if (Node->m_largeJumpFlag == -1) setIndex++;							
+				//	layerPatchSet[setIndex]->GetNodeList().AddTail(Node);
+				//}
+				//for (int i = 0; i < layerPatchSet.size(); i++) {
+				//	MatrixXf sectionTable;
+				//	getDangerSec(layerPatchSet[i], sectionTable);
+
+				//	// ------------------ Method 1 ------------------ //
+				//	//getNewPntNor(WayPointPatch, sectionTable, lambda, true);// true -> new singularity method breakSigSmoothPath
+				//	//getXYZBCE(WayPointPatch, 0);
+				//	//optimizationC(WayPointPatch);
+
+				//	// ------------------ Method 2 ------------------ //
+				//	MatrixXf B1C1table, B2C2table;
+				//	getBC2(layerPatchSet[i], 0, B1C1table, B2C2table);
+				//	motionPlanning(layerPatchSet[i], sectionTable, B1C1table, B2C2table);
+				//	getXYZ(layerPatchSet[i]);
+				//	optimizationC(layerPatchSet[i]);
+				//}
+
+				MatrixXf sectionTable;
+				getDangerSec(WayPointPatch, sectionTable);
+
+				// ------------------ Method 1 ------------------ //
+				//getNewPntNor(WayPointPatch, sectionTable, lambda, true);// true -> new singularity method breakSigSmoothPath
+				//getXYZBCE(WayPointPatch, 0);
+				//optimizationC(WayPointPatch);
+
+				// ------------------ Method 2 ------------------ //
+				MatrixXf B1C1table, B2C2table;
+				getBC2(WayPointPatch, 0, B1C1table, B2C2table);
+				motionPlanning(WayPointPatch, sectionTable, B1C1table, B2C2table);
+				getXYZ(WayPointPatch);
+				optimizationC(WayPointPatch);
+
+			}
 		}
 	}
-	cout << "------------------------------------------- XYZBCE Calculate OK! " << endl;
+	printf(" TIMER -- XYZBCD Calculation takes %ld ms.\n", clock() - time);
+	std::cout << "------------------------------------------- XYZBCD Calculation Finish!\n " << std::endl;
 }
 
 void fiveAxisPoint::isLargeLength(QMeshPatch* WayPointPatch) {
@@ -424,10 +501,50 @@ void fiveAxisPoint::isLargeLength(QMeshPatch* WayPointPatch) {
 	}
 }
 
+void fiveAxisPoint::getD(QMeshPatch* WayPointPatch) {
+
+	double Initial_large_Length = 4.0;
+	double Support_larger_Length = 8.0;
+	double largeLength = 0.0;
+
+	if (WayPointPatch->isSupportLayer) { largeLength = Support_larger_Length; }
+	else { largeLength = Initial_large_Length; }
+
+	for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
+		QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
+
+		double D = 0;
+		int lines = WayPointPatch->GetNodeNumber();
+		if (Node->GetIndexNo() == (lines - 1)) { D = 0; }
+		else {
+			double Px = Node->m_printPostion[0];	double Py = Node->m_printPostion[1];	double Pz = Node->m_printPostion[2];
+
+			GLKPOSITION nextPos = WayPointPatch->GetNodeList().Find(Node)->next;
+			QMeshNode* nextNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(nextPos);
+
+			double Px_next = nextNode->m_printPostion[0];	double Py_next = nextNode->m_printPostion[1];	double Pz_next = nextNode->m_printPostion[2];
+
+			// calculate the length of two pnts 
+			D = (Px - Px_next) * (Px - Px_next) + (Py - Py_next) * (Py - Py_next) + (Pz - Pz_next) * (Pz - Pz_next);
+			D = sqrt(D);
+			// increase the extrusion of first point
+			if (Node->GetIndexNo() == 0) { D = D + 0.75; }
+
+			if (D > largeLength) {
+				D = 0.0;
+				Node->m_largeJumpFlag = 1;		// end of prev section
+				nextNode->m_largeJumpFlag = -1;	// start of next section
+			}
+		}
+		Node->m_XYZBCE[5] = D;
+		// cout << "D: " << D << "flag" << Node->m_largeJumpFlag << endl;
+	}
+}
+
 void fiveAxisPoint::normalSmooth(QMeshPatch* WayPointPatch, int loop, bool smoothSwitch) {
 	if (smoothSwitch == true) {
 		double alpha = 0.5;
-		int lines = WayPointPatch->GetNodeNumber();//->GetNodeList().GetCount()
+		int lines = WayPointPatch->GetNodeNumber();
 		for (int smoothLoop = 0; smoothLoop < loop; smoothLoop++) {
 
 			for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
@@ -437,22 +554,16 @@ void fiveAxisPoint::normalSmooth(QMeshPatch* WayPointPatch, int loop, bool smoot
 				double Nx, Ny, Nz;
 				double Nx_next, Ny_next, Nz_next;
 
-				Nx = Node->m_printNormal[0];
-				Ny = Node->m_printNormal[1];
-				Nz = Node->m_printNormal[2];
+				Nx = Node->m_printNormal[0];	Ny = Node->m_printNormal[1];	Nz = Node->m_printNormal[2];
 				// mark the first line or the start point of one segment
 				if ((Node->GetIndexNo() == 0) || (Node->m_largeJumpFlag == -1)) {
 
-					Nx_prev = Nx;
-					Ny_prev = Ny;
-					Nz_prev = Nz;
+					Nx_prev = Nx;	Ny_prev = Ny;	Nz_prev = Nz;
 
 					GLKPOSITION nextPos = WayPointPatch->GetNodeList().Find(Node)->next;
 					QMeshNode* nextNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(nextPos);
 
-					Nx_next = nextNode->m_printNormal[0];
-					Ny_next = nextNode->m_printNormal[1];
-					Nz_next = nextNode->m_printNormal[2];
+					Nx_next = nextNode->m_printNormal[0];	Ny_next = nextNode->m_printNormal[1];	Nz_next = nextNode->m_printNormal[2];
 				}
 				// mark the last line or the end point of one segment
 				else if ((Node->GetIndexNo() == (lines - 1)) || (Node->m_largeJumpFlag == 1)) {
@@ -460,28 +571,20 @@ void fiveAxisPoint::normalSmooth(QMeshPatch* WayPointPatch, int loop, bool smoot
 					GLKPOSITION prevPos = WayPointPatch->GetNodeList().Find(Node)->prev;
 					QMeshNode* prevNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(prevPos);
 
-					Nx_prev = prevNode->m_printNormal[0];
-					Ny_prev = prevNode->m_printNormal[1];
-					Nz_prev = prevNode->m_printNormal[2];
+					Nx_prev = prevNode->m_printNormal[0];	Ny_prev = prevNode->m_printNormal[1];	Nz_prev = prevNode->m_printNormal[2];
 
-					Nx_next = Nx;
-					Ny_next = Ny;
-					Nz_next = Nz;
+					Nx_next = Nx;	Ny_next = Ny;	Nz_next = Nz;
 				}
 				else {
 					GLKPOSITION prevPos = WayPointPatch->GetNodeList().Find(Node)->prev;
 					QMeshNode* prevNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(prevPos);
 
-					Nx_prev = prevNode->m_printNormal[0];
-					Ny_prev = prevNode->m_printNormal[1];
-					Nz_prev = prevNode->m_printNormal[2];
+					Nx_prev = prevNode->m_printNormal[0];	Ny_prev = prevNode->m_printNormal[1];	Nz_prev = prevNode->m_printNormal[2];
 
 					GLKPOSITION nextPos = WayPointPatch->GetNodeList().Find(Node)->next;
 					QMeshNode* nextNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(nextPos);
 
-					Nx_next = nextNode->m_printNormal[0];
-					Ny_next = nextNode->m_printNormal[1];
-					Nz_next = nextNode->m_printNormal[2];
+					Nx_next = nextNode->m_printNormal[0];	Ny_next = nextNode->m_printNormal[1];	Nz_next = nextNode->m_printNormal[2];
 				}
 
 				double smoothedNx = (1 - alpha) * 0.5 * (Nx_prev + Nx_next) + alpha * Nx;
@@ -514,11 +617,12 @@ void fiveAxisPoint::getRawCdata(QMeshPatch* WayPointPatch, double lambda) {
 		double yCspece = Ny / Nz;
 		// Mark denger points
 		double R = sqrt(xCspece * xCspece + yCspece * yCspece);
-		double radLambda = lambda * 3.141592653589793 / 180;
+		double radLambda = DEGREE_TO_ROTATE(lambda);
 		int safeFlag = 0;
 
 		if (R < tan(radLambda)) {
 			safeFlag = -1;
+			Node->isSingularNode = true;
 		}
 		else {
 			safeFlag = 0;
@@ -570,281 +674,398 @@ void fiveAxisPoint::getDangerSec(QMeshPatch* WayPointPatch, MatrixXf& sectionTab
 	//cout << "sectionTable:\n"<<sectionTable << endl;
 }
 
-void fiveAxisPoint::getNewPntNor(QMeshPatch* WayPointPatch, const MatrixXf& sectionTable, double lambda) {
-	// return;
-	double radLambda = lambda * 3.141592653589793 / 180;
-	double minR = tan(radLambda);
-	int secNum = sectionTable.rows();
+void fiveAxisPoint::getBC2(QMeshPatch* WayPointPatch, int layersNoSolve, MatrixXf& B1C1table, MatrixXf& B2C2table) {
 
-	for (int i = 0; i < secNum; i++) {
-
-		int srtPntIndex = sectionTable(i, 0);
-		int endPntIndex = sectionTable(i, 1);
-		vector<double> srtPnt = { 0,0 };
-		vector<double> endPnt = { 0,0 };
-
-		getCspacePnt(srtPnt, srtPntIndex, WayPointPatch);
-		getCspacePnt(endPnt, endPntIndex, WayPointPatch);
-		//cout << "srtPnt " << srtPnt[0] << " , " << srtPnt[1] << endl;
-		//cout << "endPnt " << endPnt[0] << " , " << endPnt[1] << endl;
-		//cout << "srtPntIndex " << srtPntIndex << " endPntIndex " << endPntIndex << endl;
-		//cout << "------------" << endl;
-
-		vector<double> srtPnt_temp = { 0,0 };
-		vector<double> endPnt_temp = { 0,0 };
-		double R = getRotRadius(srtPnt, endPnt, minR, srtPnt_temp, endPnt_temp);
-		//cout << R << endl;
-
-		int quadSrt = getQuadrant(srtPnt_temp);
-		int quadEnd = getQuadrant(endPnt_temp);
-		int sign = getRotSign(quadSrt, quadEnd, srtPnt_temp, endPnt_temp);
-
-		double angle = getVec2Angle(srtPnt_temp, endPnt_temp);
-		//cout << angle << endl;
-
-		int divideNum = endPntIndex - srtPntIndex;
-		double deltaAngle = angle / divideNum;
-		double startAngle = atan2(srtPnt_temp[1], srtPnt_temp[0]);
-		//cout << startAngle << endl;
-
-		for (int ii = srtPntIndex; ii <= endPntIndex; ii++) {
-
-			double xCspace, yCspace;
-			if (ii == srtPntIndex) {
-				// start point optimize Normal
-				if (ii == 0) {
-					xCspace = srtPnt_temp[0];
-					yCspace = srtPnt_temp[1];
-				}// other points do not
-				else {
-					xCspace = srtPnt[0];
-					yCspace = srtPnt[1];
-				}
-
-			}
-			else if (ii == endPntIndex) {
-				// end point optimize Normal
-				if (ii == (WayPointPatch->GetNodeNumber() - 1)) {
-					xCspace = endPnt_temp[0];
-					yCspace = endPnt_temp[1];
-				}
-				// other points do not
-				else {
-					xCspace = endPnt[0];
-					yCspace = endPnt[1];
-				}
-			}
-			else {
-				int tempNum = ii - srtPntIndex;
-				double tempAngle = startAngle + deltaAngle * sign * tempNum;
-				xCspace = R * cos(tempAngle);
-				yCspace = R * sin(tempAngle);
-			}
-
-			double newNz = 1 / sqrt(1 + (xCspace * xCspace) + (yCspace * yCspace));
-			double newNx = xCspace * newNz;
-			double newNy = yCspace * newNz;
-
-			GLKPOSITION Node_Pos = WayPointPatch->GetNodeList().FindIndex(ii);
-			QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(Node_Pos);
-
-			Node->m_printNormal[0] = newNx;
-			Node->m_printNormal[1] = newNy;
-			Node->m_printNormal[2] = newNz;
-		}
-	}
-}
-
-void fiveAxisPoint::getCspacePnt(vector<double>& CspacePnt, int PntIndex, QMeshPatch* WayPointPatch) {
-
-	GLKPOSITION Node_Pos = WayPointPatch->GetNodeList().FindIndex(PntIndex);
-	QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(Node_Pos);
-
-	CspacePnt[0] = Node->m_norCspace[0];
-	CspacePnt[1] = Node->m_norCspace[1];
-
-	//cout << "CspaceX " << CspacePnt[0] << " CspaceY " << CspacePnt[1] << endl;
-}
-
-double fiveAxisPoint::getRotRadius(vector<double>& srtPnt, vector<double>& endPnt, double minR, vector<double>& srtPnt_temp, vector<double>& endPnt_temp) {
-
-	double R = 0.0;
-	double Rs = sqrt(srtPnt[0] * srtPnt[0] + srtPnt[1] * srtPnt[1]);// [Nx/Nz = srtPnt[0];  Ny/Nz = srtPnt[1]]
-	double Re = sqrt(endPnt[0] * endPnt[0] + endPnt[1] * endPnt[1]);
-
-	if ((Rs >= minR) && (Re >= minR)) {
-		//R = min(Rs, Re);
-		R = minR;
-		srtPnt_temp[0] = R / Rs * srtPnt[0];
-		srtPnt_temp[1] = R / Rs * srtPnt[1];
-		endPnt_temp[0] = R / Re * endPnt[0];
-		endPnt_temp[1] = R / Re * endPnt[1];
-	}
-	else if ((Rs < minR) && (Re >= minR)) {
-		R = minR;
-		endPnt_temp[0] = R / Re * endPnt[0];
-		endPnt_temp[1] = R / Re * endPnt[1];
-		srtPnt_temp[0] = endPnt_temp[0];
-		srtPnt_temp[1] = endPnt_temp[1];
-	}
-	else if ((Rs >= minR) && (Re < minR)) {
-		R = minR;
-		srtPnt_temp[0] = R / Rs * srtPnt[0];
-		srtPnt_temp[1] = R / Rs * srtPnt[1];
-		endPnt_temp[0] = srtPnt_temp[0];
-		endPnt_temp[1] = srtPnt_temp[1];
-	}
-	else {
-		R = 0;
-		srtPnt_temp[0] = 0;
-		srtPnt_temp[1] = 0;
-		endPnt_temp[0] = 0;
-		endPnt_temp[1] = 0;
-	}
-	return R;
-}
-
-int fiveAxisPoint::getQuadrant(vector<double>& quadPnt) {
-	double x = quadPnt[0];
-	double y = quadPnt[1];
-	int quadNum = 0;
-	if (x >= 0 && y >= 0) {
-		quadNum = 1;
-	}
-	if (x < 0 && y >= 0) {
-		quadNum = 2;
-	}
-
-	if (x < 0 && y < 0) {
-		quadNum = 3;
-	}
-	if (x >= 0 && y < 0) {
-		quadNum = 4;
-	}
-	return quadNum;
-}
-
-int fiveAxisPoint::getRotSign(int quadSrt, int quadEnd, vector<double>& srtPnt, vector<double>& endPnt) {
-
-	int signTable[4][4] = { { 0,  1,  0, -1},
-						   {-1,  0,  1,  0},
-						   { 0, -1,  0,  1},
-						   { 1,  0, -1,  0} };
-	int sign = 0;
-	if (signTable[quadSrt - 1][quadEnd - 1] != 0) {
-		sign = signTable[quadSrt - 1][quadEnd - 1];
-	}
-	else {
-		if (quadSrt == quadEnd) {
-			if (quadSrt <= 2) {
-				if (srtPnt[0] <= endPnt[0]) {
-					sign = -1;
-				}
-				else {
-					sign = 1;
-				}
-			}
-			else {
-				if (srtPnt[0] <= endPnt[0]) {
-					sign = 1;
-				}
-				else {
-					sign = -1;
-				}
-			}
-
-		}
-		else if (quadSrt > quadEnd) {
-			if (-srtPnt[0] <= endPnt[0]) {
-				sign = 1;
-			}
-			else {
-				sign = -1;
-			}
-		}
-		else {
-			if (-srtPnt[0] <= endPnt[0]) {
-				sign = -1;
-			}
-			else {
-				sign = 1;
-			}
-		}
-	}
-	//cout << sign << endl;
-	return sign;
-}
-
-double fiveAxisPoint::getVec2Angle(vector<double>& srtPnt, vector<double>& endPnt) {
-
-	double angle;
-
-	if ((srtPnt[0] == endPnt[0]) && (srtPnt[1] == endPnt[1])) {
-		angle = 0;
-	}
-	else {
-
-		double normSrtPnt = sqrt(srtPnt[0] * srtPnt[0] + srtPnt[1] * srtPnt[1]);
-		double normEndPnt = sqrt(endPnt[0] * endPnt[0] + endPnt[1] * endPnt[1]);
-		double dotX = srtPnt[0] * endPnt[0] + srtPnt[1] * endPnt[1];
-
-		angle = acos(dotX / (normSrtPnt * normEndPnt));
-	}
-
-	return angle;
-}
-
-void fiveAxisPoint::getXYZBCE(QMeshPatch* WayPointPatch, int layersNoSolve) {
-
-	double Wx = 0; double Wy = 0; double Wz = 0;
+	int lines = WayPointPatch->GetNodeNumber();
+	//B1C1table.resize(lines, 2);	B2C2table.resize(lines, 2);
+	B1C1table = Eigen::MatrixXf::Zero(lines, 2);	B2C2table = Eigen::MatrixXf::Zero(lines, 2);
 
 	for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
 		QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
 
-		//int lines = layerPntNor.rows();
-		//for (int i = 0; i < lines; i++) {
+		int i = Node->GetIndexNo();
+		double Nx = Node->m_printNormal[0];		double Ny = Node->m_printNormal[1];		double Nz = Node->m_printNormal[2];
+
+		// When layersNoSolve = 0, there will be no special actions.
+		if (WayPointPatch->GetIndexNo() < layersNoSolve) { Nx = 0; Ny = 0; Nz = 1; }
+		// solve 1
+		B1C1table(i, 0) = ROTATE_TO_DEGREE(-acos(Nz)); // B1 deg
+		B1C1table(i, 1) = ROTATE_TO_DEGREE(-atan2(Ny, Nx)); // C1 deg
+		// solve 2
+		B2C2table(i, 0) = ROTATE_TO_DEGREE(acos(Nz)); // B2 deg
+		B2C2table(i, 1) = ROTATE_TO_DEGREE(-atan2(Ny, Nx)) + 180; // C2 deg
+
+		//cout << Node->m_Bsolve[0] << " " << Node->m_Csolve[0] << " " << Node->m_Bsolve[1] << " " << Node->m_Csolve[1] << endl;
+		//cout << ROTATE_TO_DEGREE(atan2(1, 1) )<< " " << ROTATE_TO_DEGREE(atan2(1, -1)) << " " << ROTATE_TO_DEGREE(atan2(-1, -1) )<< " " << ROTATE_TO_DEGREE(atan2(-1, 1) )<< endl;
+	}
+}
+
+void fiveAxisPoint::motionPlanning(QMeshPatch* WayPointPatch, const MatrixXf& sectionTable, const MatrixXf& B1C1table, const MatrixXf& B2C2table) {
+
+	int lines = WayPointPatch->GetNodeNumber();
+	Eigen::MatrixXd BC_Matrix(lines, 3);
+	int sectionNumber = 0;
+	int sectionAmount = sectionTable.size() / 2;
+	int lastSelect = 1;
+	int i = 0;
+
+	while (i < lines) {
+		//all points of current path are OUT of the sigularity region
+		if (sectionAmount == 0) {
+			double B1 = B1C1table(i, 0);	double C1 = B1C1table(i, 1);
+			double B2 = B2C2table(i, 0);	double C2 = B2C2table(i, 1);
+			if (i == 0) {
+				if (C2 > 180.0) C2 = C2 - 360.0;
+
+				if ((abs(B1) + abs(C1)) > (abs(B2) + abs(C2))) {
+					BC_Matrix.row(i) << B2, C2, 2;
+				}
+				else {
+					BC_Matrix.row(i) << B1, C1, 1;
+				}
+			}
+			else {
+				/**********************************************/
+
+				GLKPOSITION jumpPos1 = WayPointPatch->GetNodeList().FindIndex(i);
+				QMeshNode* jumpNode1 = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(jumpPos1);
+				// large Jump Point
+				if (jumpNode1->m_largeJumpFlag == -1) {
+
+					int anotherSelect = (lastSelect % 2) + 1;
+
+					double nowC, absCtemp;
+					double prevC = BC_Matrix(i - 1, 1);
+
+					if (lastSelect == 1) { nowC = C1; }
+					else if (lastSelect == 2) { nowC = C2; }
+					else {}
+
+					if (abs(nowC - prevC) > 180.0) { absCtemp = 360.0 - abs(nowC - prevC); }
+					else { absCtemp = abs(nowC - prevC); }
+
+					if (absCtemp > 90.0) {
+						if (anotherSelect == 1) { BC_Matrix.row(i) << B1, C1, 1; }
+						else if (anotherSelect == 2) { BC_Matrix.row(i) << B2, C2, 2; }
+						else { cout << "anotherSelect error " << endl; }
+					}
+					else {
+						if (lastSelect == 1) { BC_Matrix.row(i) << B1, C1, 1; }
+						else if (lastSelect == 2) { BC_Matrix.row(i) << B2, C2, 2; }
+						else { cout << "lastSelect error " << endl; }
+					}
+				}
+				else {
+					if (lastSelect == 1) { BC_Matrix.row(i) << B1, C1, 1; }
+					else if (lastSelect == 2) { BC_Matrix.row(i) << B2, C2, 2; }
+					else { cout << "lastSelect error " << endl; }
+				}
+
+				/**********************************************/
+				/*if (lastSelect == 1) { BC_Matrix.row(i) << B1, C1, 1; }
+				else if (lastSelect == 2) { BC_Matrix.row(i) << B2, C2, 2; }
+				else { cout << "lastSelect error " << endl; }*/
+				/**********************************************/
+			}
+			lastSelect = (int)BC_Matrix(i, 2);
+			i = i + 1;
+		}
+		else {
+			int anotherSelect;
+			//all points of current path are IN the sigularity region
+			if (i == sectionTable(sectionNumber, 0) && i == 0 && sectionTable(sectionNumber, 1) == (lines - 1)) {
+				for (int secLineIndex = i; secLineIndex < lines; secLineIndex++) {
+					BC_Matrix.row(secLineIndex) << 0.0, 0.0, 0;
+				}
+				i = lines;
+			}
+			// start from the singularity region / end in singularity region or not 
+			else if (i == sectionTable(sectionNumber, 0) && i == 0 && sectionTable(sectionNumber, 1) != (lines - 1)) {
+
+				int secEndIndex = sectionTable(sectionNumber, 1);
+				double endPntB1 = B1C1table(secEndIndex, 0);	double endPntC1 = B1C1table(secEndIndex, 1);
+				double endPntB2 = B2C2table(secEndIndex, 0);	double endPntC2 = B2C2table(secEndIndex, 1);
+
+				for (int secLineIndex = i; secLineIndex < secEndIndex; secLineIndex++) {
+
+
+					if (endPntC2 > 180.0) endPntC2 = endPntC2 - 360.0;
+
+					if ((abs(endPntB1) + abs(endPntC1)) > (abs(endPntB2) + abs(endPntC2))) {
+						BC_Matrix.row(secLineIndex) << endPntB2, endPntC2, 2;
+					}
+					else {
+						BC_Matrix.row(secLineIndex) << endPntB1, endPntC1, 1;
+					}
+
+					//cout << secLineIndex <<" "<<BC_Matrix(secLineIndex, 0) << " " << BC_Matrix(secLineIndex, 1) << " " << BC_Matrix(secLineIndex, 2) << endl;
+				}
+				//cout << BC_Matrix << endl;
+				lastSelect = (int)BC_Matrix((secEndIndex - 1), 2);
+				i = secEndIndex;
+				if (sectionNumber != (sectionAmount - 1))	sectionNumber = sectionNumber + 1;
+			}
+			// end in the singularity region / finish path
+			else if (i == sectionTable(sectionNumber, 0) && i != 0 && sectionTable(sectionNumber, 1) == (lines - 1)) {
+
+				int secStartIndex = sectionTable(sectionNumber, 0);
+				double startPntB1 = B1C1table(secStartIndex, 0);	double startPntC1 = B1C1table(secStartIndex, 1);
+				double startPntB2 = B2C2table(secStartIndex, 0);	double startPntC2 = B2C2table(secStartIndex, 1);
+
+				for (int secLineIndex = i; secLineIndex < lines; secLineIndex++) {
+					if (lastSelect == 1) {
+						BC_Matrix.row(secLineIndex) << startPntB1, startPntC1, 1;
+					}
+					else if (lastSelect == 2) {
+						BC_Matrix.row(secLineIndex) << startPntB2, startPntC2, 2;
+					}
+				}
+				i = lines;
+			}
+			// path passes through the sigularity region
+			else if (i == sectionTable(sectionNumber, 0) && i != 0 && sectionTable(sectionNumber, 1) != (lines - 1)) {
+
+				//double startPnt_B1_temp, startPnt_C1_temp, startPnt_B2_temp, startPnt_C2_temp;
+				//double endPnt_B1_temp, endPnt_C1_temp, endPnt_B2_temp, endPnt_C2_temp;
+
+				// start point message
+				int secStartIndex = sectionTable(sectionNumber, 0);
+				double startPntB1 = B1C1table(secStartIndex, 0);	double startPntC1 = B1C1table(secStartIndex, 1);
+				double startPntB2 = B2C2table(secStartIndex, 0);	double startPntC2 = B2C2table(secStartIndex, 1);
+				// end point message
+				int secEndIndex = sectionTable(sectionNumber, 1);
+				double endPntB1 = B1C1table(secEndIndex, 0);	double endPntC1 = B1C1table(secEndIndex, 1);
+				double endPntB2 = B2C2table(secEndIndex, 0);	double endPntC2 = B2C2table(secEndIndex, 1);
+
+
+
+				GLKPOSITION jumpPos3 = WayPointPatch->GetNodeList().FindIndex(secEndIndex);
+				QMeshNode* jumpNode3 = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(jumpPos3);
+				// large Jump Point
+				if (jumpNode3->m_largeJumpFlag == -1) {
+					endPntB1 = startPntB1; endPntC1 = startPntC1;
+					endPntB2 = startPntB2; endPntC2 = startPntC2;
+				}
+
+				GLKPOSITION jumpPos4 = WayPointPatch->GetNodeList().FindIndex(secStartIndex);
+				QMeshNode* jumpNode4 = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(jumpPos4);
+				// large Jump Point
+				if (jumpNode4->m_largeJumpFlag == 1) {
+					startPntB1 = endPntB1; startPntC1 = endPntC1;
+					startPntB2 = endPntB2; startPntC2 = endPntC2;
+				}
+
+				double angle = 0.0;
+				if (lastSelect == 1) { angle = abs(startPntC1 - endPntC1); }
+				else if (lastSelect == 2) { angle = abs(startPntC2 - endPntC2); }
+				else { cout << "lastSelect error " << lastSelect << endl; }
+
+				int pointNum = sectionTable(sectionNumber, 1) - sectionTable(sectionNumber, 0);
+				anotherSelect = (lastSelect % 2) + 1;
+				// decide which arc to choose(< 180)
+				if (angle > 180.0)	angle = 360.0 - angle;
+
+				double Cangle = 0.0, Bangle = 0.0;
+				// whether flip / yes
+				if (angle > 90.0) {
+					if (lastSelect == 1) { Cangle = endPntC2 - startPntC1;		Bangle = endPntB2 - startPntB1; }
+					else if (lastSelect == 2) { Cangle = endPntC1 - startPntC2;		Bangle = endPntB1 - startPntB2; }
+					else { cout << "lastSelect error " << lastSelect << endl; }
+
+					if (abs(Cangle) > 180.0) {
+						if (Cangle > 0.0) { Cangle = Cangle - 360; }
+						else { Cangle = Cangle + 360; }
+					}
+
+					unsigned int times = 0;
+					int select_keep = lastSelect;
+
+					for (int secLineIndex = secStartIndex; secLineIndex < secEndIndex; secLineIndex++) {
+						if (select_keep == 2) {
+							BC_Matrix(secLineIndex, 0) = startPntB2 + times * Bangle / pointNum;
+							BC_Matrix(secLineIndex, 1) = startPntC2 + times * Cangle / pointNum;
+						}
+						else if (select_keep == 1) {
+							BC_Matrix(secLineIndex, 0) = startPntB1 + times * Bangle / pointNum;
+							BC_Matrix(secLineIndex, 1) = startPntC1 + times * Cangle / pointNum;
+						}
+						else { cout << "select_keep error " << select_keep << endl; }
+
+						times = times + 1;
+						BC_Matrix(secLineIndex, 2) = lastSelect;
+
+						if (secLineIndex == secEndIndex - 1) {
+							BC_Matrix(secLineIndex, 2) = anotherSelect;
+							lastSelect = anotherSelect;
+							anotherSelect = (lastSelect % 2) + 1;
+						}
+					}
+
+					if (jumpNode4->m_largeJumpFlag == 1) {
+
+						if (select_keep == 2)	BC_Matrix.row(secStartIndex) << B2C2table(secStartIndex, 0), B2C2table(secStartIndex, 1), 2;
+						if (select_keep == 1)	BC_Matrix.row(secStartIndex) << B1C1table(secStartIndex, 0), B1C1table(secStartIndex, 1), 1;
+
+					}
+
+
+				}
+				// whether flip / no
+				else {
+
+					if (lastSelect == 1) { Cangle = endPntC1 - startPntC1;		Bangle = endPntB1 - startPntB1; }
+					else if (lastSelect == 2) { Cangle = endPntC2 - startPntC2;		Bangle = endPntB2 - startPntB2; }
+					else { cout << "lastSelect error " << lastSelect << endl; }
+
+					if (abs(Cangle) > 180.0) {
+						if (Cangle > 0.0) Cangle = Cangle - 360;
+						else Cangle = Cangle + 360;
+					}
+
+					unsigned int times = 0;
+
+					for (int secLineIndex = secStartIndex; secLineIndex < secEndIndex; secLineIndex++) {
+						if (lastSelect == 2) {
+							BC_Matrix(secLineIndex, 0) = startPntB2 + times * Bangle / pointNum;
+							BC_Matrix(secLineIndex, 1) = startPntC2 + times * Cangle / pointNum;
+							BC_Matrix(secLineIndex, 2) = lastSelect;
+						}
+						else if (lastSelect == 1) {
+							BC_Matrix(secLineIndex, 0) = startPntB1 + times * Bangle / pointNum;
+							BC_Matrix(secLineIndex, 1) = startPntC1 + times * Cangle / pointNum;
+							BC_Matrix(secLineIndex, 2) = lastSelect;
+						}
+						else { cout << "lastSelect error " << lastSelect << endl; }
+
+						times = times + 1;
+					}
+
+					if (jumpNode4->m_largeJumpFlag == 1) {
+
+						if (lastSelect == 2)	BC_Matrix.row(secStartIndex) << B2C2table(secStartIndex, 0), B2C2table(secStartIndex, 1), 2;
+						if (lastSelect == 1)	BC_Matrix.row(secStartIndex) << B1C1table(secStartIndex, 0), B1C1table(secStartIndex, 1), 1;
+
+					}
+
+				}
+
+				lastSelect = (int)BC_Matrix((secEndIndex - 1), 2);
+				i = secEndIndex;
+				if (sectionNumber != (sectionAmount - 1))	sectionNumber = sectionNumber + 1;
+
+			}
+			// other points out of the singularity region
+			else {
+
+				double B1 = B1C1table(i, 0);	double C1 = B1C1table(i, 1);
+				double B2 = B2C2table(i, 0);	double C2 = B2C2table(i, 1);
+				if (i == 0) {
+
+					if (C2 > 180.0) C2 = C2 - 360.0;
+
+					if ((abs(C1) + abs(B1)) > (abs(C2) + abs(B2))) {
+						BC_Matrix.row(i) << B2, C2, 2;
+						lastSelect = 2;
+					}
+					else {
+						BC_Matrix.row(i) << B1, C1, 1;
+						lastSelect = 1;
+					}
+
+
+				}
+				else {
+					/**************************************/
+
+
+					GLKPOSITION jumpPos2 = WayPointPatch->GetNodeList().FindIndex(i);
+					QMeshNode* jumpNode2 = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(jumpPos2);
+					// large Jump Point
+					if (jumpNode2->m_largeJumpFlag == -1) {
+
+						anotherSelect = (lastSelect % 2) + 1;
+
+						double nowC, absCtemp;
+						double prevC = BC_Matrix(i - 1, 1);
+
+						if (lastSelect == 1) { nowC = C1; }
+						else if (lastSelect == 2) { nowC = C2; }
+						else { cout << "lastSelect error " << lastSelect << endl; }
+
+						if (abs(nowC - prevC) > 180.0) { absCtemp = 360.0 - abs(nowC - prevC); }
+						else { absCtemp = abs(nowC - prevC); }
+						// whether flip / yes
+						if (absCtemp > 90.0) {
+							if (anotherSelect == 1) { BC_Matrix.row(i) << B1, C1, 1; }
+							else if (anotherSelect == 2) { BC_Matrix.row(i) << B2, C2, 2; }
+							else { cout << "anotherSelect error " << anotherSelect << endl; }
+							lastSelect = anotherSelect;
+						}
+						// whether flip / no
+						else {
+							if (lastSelect == 1) { BC_Matrix.row(i) << B1, C1, 1; }
+							else if (lastSelect == 2) { BC_Matrix.row(i) << B2, C2, 2; }
+							else { cout << "lastSelect error " << lastSelect << endl; }
+						}
+					}
+					else {
+						if (lastSelect == 1) { BC_Matrix.row(i) << B1, C1, 1; }
+						else if (lastSelect == 2) { BC_Matrix.row(i) << B2, C2, 2; }
+						else { cout << "lastSelect error " << lastSelect << endl; }
+					}
+
+					/*****************************/
+					/*if (lastSelect == 1) {BC_Matrix.row(i) << B1C1table(i, 0), B1C1table(i, 1), 1;}
+					else if (lastSelect == 2) {BC_Matrix.row(i) << B2C2table(i, 0), B2C2table(i, 1), 2;}
+					else{cout << "lastSelect error " << endl;}*/
+					/**************************************/
+				}
+
+				i = i + 1;
+			}
+		}
+	}
+
+	for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
+		QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
+
+		int nodeIndex = Node->GetIndexNo();
+		Node->m_XYZBCE[3] = BC_Matrix(nodeIndex, 0); //deg
+		Node->m_XYZBCE[4] = BC_Matrix(nodeIndex, 1); //deg
+
+	}
+}
+
+void fiveAxisPoint::getXYZ(QMeshPatch* WayPointPatch) {
+	for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
+		QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
 
 		double Px = Node->m_printPostion[0];
 		double Py = Node->m_printPostion[1];
 		double Pz = Node->m_printPostion[2];
-		double Nx = Node->m_printNormal[0];
-		double Ny = Node->m_printNormal[1];
-		double Nz = Node->m_printNormal[2];
 
-		if (WayPointPatch->GetIndexNo() < layersNoSolve) { // When layersNoSolve = 0, there will be no special actions.
-			Nx = 0; Ny = 0; Nz = 1;
-		}
+		double B = DEGREE_TO_ROTATE(Node->m_XYZBCE[3]);// rad
+		double C = DEGREE_TO_ROTATE(Node->m_XYZBCE[4]);// rad
 
-		double B = -acos(Nz);
-		double C = -atan2(Ny, Nx);
-		double X = cos(B) * cos(C) * Px - cos(B) * sin(C) * Py + sin(B) * Pz + Wx;
-		double Y = sin(C) * Px + cos(C) * Py + Wy;
-		double Z = -sin(B) * cos(C) * Px + sin(B) * sin(C) * Py + cos(B) * Pz + Wz;
-		// Translate from rad to dreg
-		B = B * 180 / 3.141592653589793;
-		C = C * 180 / 3.141592653589793;
+		Node->m_XYZBCE[0] = cos(B) * cos(C) * Px - cos(B) * sin(C) * Py + sin(B) * Pz;
+		Node->m_XYZBCE[1] = sin(C) * Px + cos(C) * Py;
+		Node->m_XYZBCE[2] = -sin(B) * cos(C) * Px + sin(B) * sin(C) * Py + cos(B) * Pz;
 
-		Node->m_XYZBCE[0] = X;
-		Node->m_XYZBCE[1] = Y;
-		Node->m_XYZBCE[2] = Z;
-		Node->m_XYZBCE[3] = B;
-		Node->m_XYZBCE[4] = C;
+		if (Node->m_XYZBCE[2] < 1.0) { Node->negativeZ = true; }
+
 	}
 }
 
 void fiveAxisPoint::optimizationC(QMeshPatch* WayPointPatch) {
 
-	for (int loop = 0; loop < 7; loop++) {
+	for (int loop = 0; loop < 20; loop++) {
 
 		double threshhold = 180.0;
 
 		for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
 			QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
 
-			//int lines = layerXYZBCE.rows();
-			//for (int i = 1; i < lines; i++) {
-
-			double C = Node->m_XYZBCE[4];
+			double C = Node->m_XYZBCE[4]; // deg
 
 			if (Node->GetIndexNo() == 0) continue;
 			GLKPOSITION prevPos = WayPointPatch->GetNodeList().Find(Node)->prev;
@@ -864,42 +1085,49 @@ void fiveAxisPoint::optimizationC(QMeshPatch* WayPointPatch) {
 	}
 }
 
-void fiveAxisPoint::writeGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir) {
+void fiveAxisPoint::writeGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir, int GcodeGeneRange_From, int GcodeGeneRange_To, double E3_xOff, double E3_yOff) {
+
+	std::cout << "------------------------------------------- " << rltDir << " Gcode Writing ..." << std::endl;
 
 	// Define the basic parameter
-	double Z_home = 200;						// The hight of Home point; / mm
-	double Z_high = 30;							// The hight of G1 point(for safety); / mm
+	double Z_home = 230;						// The hight of Home point; / mm
+	double Z_high = 70;							// The hight of G1 point(for safety); / mm
+	double Z_compensateUpDistance = 2;			// The hight of waiting distance of extruder; / mm
 
-	int E2temperature = 200;					// The temperature of Extruder 2
-	int E3temperature = 200;					// The temperature of Extruder 3
+	int sExtruder = 3;							// Support extruder num
+	int iExtruder = 1;							// Initial extruder num
 
-	int F_G0_XYBC = 4500;						// Speed of G0 move of XYBC
-	int F_G0_Z = 4000;							// Speed of G0 move of Z
+	int iTemperature = 200;						// The temperature of Extruder Initial
+	int sTemperature = 200;						// The temperature of Extruder Support
+
+	int F_G0_XYBC = 5250;						// Speed of G0 move of XYBC
+	int F_G0_Z = 4750;							// Speed of G0 move of Z
 	int F_G1_support = 1500;					// Speed of G1 support material (normal 2ed~layers)
 	int F_G1_original = 1500;					// Speed of G1 original material (normal 2ed~layers)
 	int F_G1_1stlayer = 1500;					// Speed of G1(special 1st layer)
-	int F_PumpCompensate = 3000;				// Speed of PumpCompensate
+	int F_PumpBack = 5000;						// Speed of F_PumpBack
+	int F_PumpCompensate = 4750;				// Speed of PumpCompensate
 
-	double E_PumpBack = -4.5;					// The extruder pump back Xmm
-	double E_PumpCompensate = 3.5 + E_PumpBack; // The extruder pump compensate Xmm
-	double E_PumpCompensateL1 = 10;				// The extruder pump compensate for 1st layer Xmm
-	double E_PumpCompensateNewE = 6;			// The extruder pump compensate for new type layer Xmm
+	double E_PumpBack = -12;					// The extruder pump back Xmm
+	double E_PumpCompensate = 11;				// The extruder pump compensate Xmm
+	double E_PumpCompensateL1 = 15;				// The extruder pump compensate for 1st layer Xmm
+	double E_PumpCompensateNewE = 12;			// The extruder pump compensate for new type layer Xmm
 
 	// important parameter for extruder 3
-	double xExtuderOffset = -2.0;
-	double yExtuderOffset = 0.0;
+	double xExtuderOffset = E3_xOff;
+	double yExtuderOffset = E3_yOff;
 
 	char targetFilename[1024];
-	sprintf(targetFilename, "%s%s", "../2_GenratedGcode/", rltDir.c_str());
+	std::sprintf(targetFilename, "%s%s", "../2_GenratedGcode/", rltDir.c_str());
 	FILE* fp = fopen(targetFilename, "w");
 	if (!fp) {
 		perror("Couldn't open the directory");
 		return;
 	}
 
-	// Record the max Z for security consideration (1st layer)
-	GLKPOSITION layer1st_Pos = polygenMesh_Waypoints->GetMeshList().GetHeadPosition();
-	QMeshPatch* layer1st_WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetNext(layer1st_Pos);
+	// Record the max Z for security consideration (1st printed layer)
+	GLKPOSITION layer1st_Pos = polygenMesh_Waypoints->GetMeshList().FindIndex(GcodeGeneRange_From);
+	QMeshPatch* layer1st_WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetAt(layer1st_Pos);
 
 	double Z_max = -99999.9;
 	for (GLKPOSITION Pos = layer1st_WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
@@ -914,28 +1142,54 @@ void fiveAxisPoint::writeGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir
 	// Give the start message of G_code
 	if (layer1st_WayPointPatch->isSupportLayer == true) {
 		std::fprintf(fp, "G90\n");
-		std::fprintf(fp, "M104 S%d T3\n", E3temperature);
-		std::fprintf(fp, "G28 X0.000 Y0.000 Z%.3f B0.000 C0.000\n", Z_home);
-		std::fprintf(fp, "M109 S%d T3\n", E3temperature);
+		std::fprintf(fp, "M104 S200 T2\n");
+		std::fprintf(fp, "M104 S%d T%d\n", sTemperature, sExtruder);
+		std::fprintf(fp, "G28 X0.000 Y0.000 Z%.3f B0.000 C0.000 F%d\n", Z_home, F_G0_XYBC);
+		std::fprintf(fp, "M109 S%d T%d\n", sTemperature, sExtruder);
 	}
 	else {
 		std::fprintf(fp, "G90\n");
-		std::fprintf(fp, "M104 S%d T2\n", E2temperature);
-		std::fprintf(fp, "G28 X0.000 Y0.000 Z%.3f B0.000 C0.000\n", Z_home);
-		std::fprintf(fp, "M109 S%d T2\n", E2temperature);
+		std::fprintf(fp, "M104 S200 T2\n");
+		std::fprintf(fp, "M104 S%d T%d\n", iTemperature, iExtruder);
+		std::fprintf(fp, "G28 X0.000 Y0.000 Z%.3f B0.000 C0.000 F%d\n", Z_home, F_G0_XYBC);
+		std::fprintf(fp, "M109 S%d T%d\n", iTemperature, iExtruder);
 	}
 
 
 	for (GLKPOSITION Pos = polygenMesh_Waypoints->GetMeshList().GetHeadPosition(); Pos;) {
 		QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetNext(Pos);
 
+		if (WayPointPatch->GetIndexNo() < GcodeGeneRange_From || WayPointPatch->GetIndexNo() > GcodeGeneRange_To) continue;
+
 		for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
 			QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
 			double X = Node->m_XYZBCE[0]; double Y = Node->m_XYZBCE[1]; double Z = Node->m_XYZBCE[2];
 			double B = Node->m_XYZBCE[3]; double C = Node->m_XYZBCE[4]; double E = Node->m_XYZBCE[5];
 
-			if (Z < 0.0) { Node->negativeZ = true; }
-			if (WayPointPatch->GetIndexNo() == 0) { E = E * 1.1; }
+			// check the huge change of C angle
+			if (Node->GetIndexNo() != 0)
+			{
+				GLKPOSITION prevPos = WayPointPatch->GetNodeList().Find(Node)->prev;
+				QMeshNode* prevNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(prevPos);
+
+				double C_prev = prevNode->m_XYZBCE[4];
+
+				if (abs(C - C_prev) > 300
+					&& prevNode->m_largeJumpFlag != 1 && Node->m_largeJumpFlag != -1
+					&& Node->isCollisionEnd == false && Node->isCollisionStart == false
+					&& Node->isNegZStart == false && Node->isNegZEnd == false) {
+
+					Node->isHighLight = true;
+					cerr << "abs(C - C_prev) ERROR! " << abs(C - C_prev) << std::endl;
+					cout << prevNode->m_largeJumpFlag << Node->m_largeJumpFlag << Node->isCollisionEnd << prevNode->isCollisionStart << endl;
+					cout << "WayPointPatch->GetIndexNo() " << WayPointPatch->GetIndexNo() << endl;
+				}
+
+			}
+			// check the negative Z motion
+			if (Z < 0.0) { cout << "Z sitll < 0.0" << endl; }
+			// increase the extrusion of first layer
+			if (WayPointPatch->GetIndexNo() == GcodeGeneRange_From) { E = E * 1.1; }//?
 
 			//modify the xy-offset according to the extruder
 			if (WayPointPatch->isSupportLayer == true) {
@@ -952,7 +1206,7 @@ void fiveAxisPoint::writeGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir
 					// move to start of printing location
 					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
 					// slowly lower for printing
-					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_high), F_G0_Z);
+					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_compensateUpDistance), F_G0_Z);
 					// zero extruded length(set E axis to 0)
 					std::fprintf(fp, "G92 E0\n");
 					std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensateL1, F_PumpCompensate);
@@ -961,20 +1215,23 @@ void fiveAxisPoint::writeGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir
 				}
 				else if (WayPointPatch->isSupportLayer == IsSupportLayer_last) {
 					std::fprintf(fp, "G92 E0\n");
-					std::fprintf(fp, "G0 E%.3f F%d\n", E_PumpBack * 0.8, F_G0_XYBC);
-					// return to the safe point Z_max + Z_high + 2
-					std::fprintf(fp, "G0 Z%.3f\n", (Z_max + Z_high + 2));
-					// move to start of printing location
-					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f E%.3f F%d\n", X, Y, B, C, E_PumpBack * 0.9, F_G0_XYBC);
-					// slowly lower for printing
-					std::fprintf(fp, "G0 Z%.3f E%.3f F%d\n", (Z + Z_high), E_PumpBack, F_G0_Z);
-					std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensate, F_PumpCompensate);
+					std::fprintf(fp, "G0 E%.3f F%d\n", E_PumpBack, F_PumpBack);
 					std::fprintf(fp, "G92 E0\n");
+					// return to the safe point Z_max + Z_high
+					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_high), F_G0_Z);
+					// move to start of printing location
+					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
+					// slowly lower for printing
+					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
 
 					if (WayPointPatch->isSupportLayer == true) {
+						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensate * 1.2, F_PumpCompensate);
+						std::fprintf(fp, "G92 E0\n");
 						std::fprintf(fp, "G1 F%d\n", F_G1_support);
 					}
 					else {
+						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensate, F_PumpCompensate);
+						std::fprintf(fp, "G92 E0\n");
 						std::fprintf(fp, "G1 F%d\n", F_G1_original);
 					}
 
@@ -982,65 +1239,77 @@ void fiveAxisPoint::writeGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir
 				// the special case: exchange extruder
 				else {
 					std::fprintf(fp, "G92 E0\n");
-					std::fprintf(fp, "G0 E%.3f F%d\n", E_PumpBack, F_G0_XYBC);
+					std::fprintf(fp, "G0 E%.3f F%d\n", E_PumpBack, F_PumpBack);
 					// return to the home point Z_home
-					std::fprintf(fp, "G0 Z%.3f\n", Z_home);
+					std::fprintf(fp, "G0 Z%.3f F%d\n", Z_home, F_G0_Z);
 
 					// change extruder
 					if (WayPointPatch->isSupportLayer == true)
 					{
-						std::fprintf(fp, "M104 S%d T3\n", E3temperature);
+						std::fprintf(fp, "M104 S%d T%d\n", sTemperature, sExtruder);
 					}
-					else { std::fprintf(fp, "M104 S%d T2\n", E2temperature); }
+					else { std::fprintf(fp, "M104 S%d T%d\n", iTemperature, iExtruder); }
 					std::fprintf(fp, "G92 E0\n");
 
 					// move to start of printing location
-					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f E%.3f F%d\n", X, Y, B, C, E_PumpBack * 0.25, F_G0_XYBC);
-					std::fprintf(fp, "G0 Z%.3f E%.3f F%d\n", (Z + Z_high), E_PumpBack * 0.5, F_G0_Z);
-					// slowly lower for printing
-					std::fprintf(fp, "G92 E0\n");
-					std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensateNewE, F_PumpCompensate);
-					std::fprintf(fp, "G92 E0\n");
+					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
+					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
+
 
 					if (WayPointPatch->isSupportLayer == true) {
+						// slowly lower for printing
+						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensateNewE * 1.2, F_PumpCompensate);
+						std::fprintf(fp, "G92 E0\n");
 						std::fprintf(fp, "G1 F%d\n", F_G1_support);
 					}
 					else {
+						// slowly lower for printing
+						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensateNewE, F_PumpCompensate);
+						std::fprintf(fp, "G92 E0\n");
 						std::fprintf(fp, "G1 F%d\n", F_G1_original);
 					}
 				}
 				std::fprintf(fp, "G1 X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f\n", X, Y, Z, B, C, E);
 			}
 			else {
-				// Consider the waypoints with too large Length
-				if (Node->m_largeJumpFlag == -1) {
+				// Consider the waypoints with too large Length OR large Singularity areas
+				if (Node->m_largeJumpFlag == -1 || Node->isSingularSecEndNode || Node->isCollisionStart || Node->isCollisionEnd || Node->isNegZStart || Node->isNegZEnd) {
 
-					GLKPOSITION prevPos = WayPointPatch->GetNodeList().Find(Node)->prev;
-					QMeshNode* prevNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(prevPos);
-					double oldZ = prevNode->m_XYZBCE[2];
+					//GLKPOSITION prevPos = WayPointPatch->GetNodeList().Find(Node)->prev;
+					//QMeshNode* prevNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(prevPos);
+					//double oldZ = prevNode->m_XYZBCE[2];
+					//double odlE = prevNode->m_XYZBCE[5];
 
-					std::fprintf(fp, "G0 E%.3f F5000\n", (E - 3));
-					std::fprintf(fp, "G0 Z%.3f F5000\n", (max(Z_max, oldZ) + 20));
-					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F5000\n", X, Y, B, C);
-
-					// std::fprintf(fp, "G0 Z%.3f E%.3f\n", Z, E);
+					//std::cout << Node->m_XYZBCE[5] << std::endl;
+					//std::cout << "oldE = "<<odlE << std::endl;
 
 					if (WayPointPatch->isSupportLayer == true) {
+						//std::fprintf(fp, "G0 E%.3f F%d\n", (odlE + E_PumpBack * 1.95), F_PumpBack);
+						//std::fprintf(fp, "G0 Z%.3f F%d\n", (max(Z_max, oldZ) + Z_high), F_G0_Z);
+						std::fprintf(fp, "G0 E%.3f F%d\n", (E + E_PumpBack * 1.4), F_PumpBack);
+						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_high), F_G0_Z);
+						std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
+						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
+						std::fprintf(fp, "G0 E%.3f F%d\n", (E - 0.1), F_PumpCompensate);
 						std::fprintf(fp, "G0 Z%.3f E%.3f F%d\n", Z, E, F_G1_support);
 					}
 					else {
+						//std::fprintf(fp, "G0 E%.3f F%d\n", (odlE + E_PumpBack * 0.8), F_PumpBack);
+						//std::fprintf(fp, "G0 Z%.3f F%d\n", (max(Z_max, oldZ) + Z_high), F_G0_Z);
+						std::fprintf(fp, "G0 E%.3f F%d\n", (E + E_PumpBack * 0.8), F_PumpBack);
+						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_high), F_G0_Z);
+						std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
+						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
+						std::fprintf(fp, "G0 E%.3f F%d\n", (E - 0.1), F_PumpCompensate);
 						std::fprintf(fp, "G0 Z%.3f E%.3f F%d\n", Z, E, F_G1_original);
 					}
+
+					//std::cout << "oldE = " << odlE << std::endl;
+
 				}
 				std::fprintf(fp, "G1 X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f\n", X, Y, Z, B, C, E);
 			}
-		}
-
-		//std::cout << WayPointPatch->isSupportLayer << std::endl;
-		std::cout << ".";
-		if (((WayPointPatch->GetIndexNo() + 1) % 100 == 0) ||
-			((WayPointPatch->GetIndexNo() + 1) == polygenMesh_Waypoints->GetMeshList().GetCount())) {
-			std::cout << std::endl;
+			//std::cout << E << std::endl;
 		}
 
 		IsSupportLayer_last = WayPointPatch->isSupportLayer;
@@ -1048,13 +1317,13 @@ void fiveAxisPoint::writeGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir
 
 	std::fprintf(fp, "G92 E0\n");
 	std::fprintf(fp, "G0 E%.3f F%d\n", E_PumpBack, F_G0_XYBC); // PumpBack
-	std::fprintf(fp, "G0 Z%.3f\n", Z_home); // return to the home point Z_home
+	std::fprintf(fp, "G0 Z%.3f F%d\n", Z_home, F_G0_Z); // return to the home point Z_home
 	std::fprintf(fp, "G0 X0 Y0 B0 C0 F%d\n", F_G0_XYBC);
-	std::fprintf(fp, "M30");// Stop all of the motion
+	std::fprintf(fp, "M30\n");// Stop all of the motion
 
 	std::fclose(fp);
 
-	std::cout << "------------------------------------------- " << rltDir << " Write OK!" << endl;
+	std::cout << "------------------------------------------- " << rltDir << " Gcode Write Finish!\n" << std::endl;
 }
 
 void fiveAxisPoint::testXYZBCE(QMeshPatch* WayPointPatch, string Dir, bool testSwitch) {
@@ -1114,14 +1383,24 @@ void fiveAxisPoint::testLayerHeight(QMeshPatch* WayPointPatch, string Dir, bool 
 
 }
 
-void fiveAxisPoint::height2E(PolygenMesh* polygenMesh_Waypoints, bool func_switch) {
+void fiveAxisPoint::height2E(PolygenMesh* polygenMesh_Waypoints, int GcodeGeneRange_From, int GcodeGeneRange_To, bool func_switch) {
+
+	if (func_switch == true) {
+		std::cout << "------------------------------------------- E of Vary-Height Calculation running ..." << std::endl;
+	}
+	else {
+		std::cout << "------------------------------------------- E of Uniform-Height Calculation running ..." << std::endl;
+	}
 
 	// E = E + ratio * height * length * width;
-	double ratio = 0.5; // Dicided by CNC W.R.T(E:Volume:E = 0.48)
-	double width = 0.68;
+	double ratio_initial = 0.55; // Dicided by CNC W.R.T(E:Volume:E = 0.48)
+	double ratio_support = 0.5;
+	double width = 0.6;
 
 	for (GLKPOSITION Pos = polygenMesh_Waypoints->GetMeshList().GetHeadPosition(); Pos;) {
 		QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetNext(Pos);
+
+		if (WayPointPatch->GetIndexNo() < GcodeGeneRange_From || WayPointPatch->GetIndexNo() > GcodeGeneRange_To) continue;
 
 		double E = 0;
 
@@ -1134,7 +1413,8 @@ void fiveAxisPoint::height2E(PolygenMesh* polygenMesh_Waypoints, bool func_switc
 
 			if (func_switch == true) {
 				height = Node->m_layerHeight;
-				deltaE = ratio * height * length * width;
+				if (WayPointPatch->isSupportLayer) deltaE = ratio_support * height * length * width;
+				else deltaE = ratio_initial * height * length * width;
 			}
 			else {
 				deltaE = 0.25 * length;
@@ -1143,18 +1423,18 @@ void fiveAxisPoint::height2E(PolygenMesh* polygenMesh_Waypoints, bool func_switc
 			E = E + deltaE;
 			Node->m_XYZBCE[5] = E;
 		}
-		std::cout << ".";
-		if (((WayPointPatch->GetIndexNo() + 1) % 100 == 0) ||
-			((WayPointPatch->GetIndexNo() + 1) == polygenMesh_Waypoints->GetMeshList().GetCount())) {
-			std::cout << std::endl;
-		}
+		//std::cout << ".";
+		//if (((WayPointPatch->GetIndexNo() + 1) % 100 == 0) ||
+		//	((WayPointPatch->GetIndexNo() + 1) == polygenMesh_Waypoints->GetMeshList().GetCount())) {
+		//	std::cout << std::endl;
+		//}
 	}
 
 	if (func_switch == true) {
-		std::cout << "------------------------------------------- Height2E OK!" << std::endl;
+		std::cout << "------------------------------------------- E of Vary-Height Calculation Finish!\n" << std::endl;
 	}
 	else {
-		std::cout << "------------------------------------------- DeltaE2E OK!" << std::endl;
+		std::cout << "------------------------------------------- E of Uniform-Height Calculation Finish!\n" << std::endl;
 	}
 }
 
@@ -1398,4 +1678,241 @@ void fiveAxisPoint::_freeMemoryConvexHull(QHULLSET*& pConvexHull)
 	free(pConvexHull);
 
 	pConvexHull = NULL;
+}
+
+void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir, int GcodeGeneRange_From, int GcodeGeneRange_To, double E3_xOff, double E3_yOff)
+{
+	std::cout << "------------------------------------------- " << rltDir << " Gcode Writing ..." << std::endl;
+
+	// Define the basic parameter
+	double Z_home = 230;						// The hight of Home point; / mm
+	double Z_high = 70;							// The hight of G1 point(for safety); / mm
+	double Z_compensateUpDistance = 2;			// The hight of waiting distance of extruder; / mm
+
+	int sExtruder = 1;							// Support extruder num
+	int iExtruder = 0;							// Initial extruder num
+
+	int iTemperature = 200;						// The temperature of Extruder Initial
+	int sTemperature = 200;						// The temperature of Extruder Support
+
+	int F_G0_XYBC = 1000;						// Speed of G0 move of XYBC
+	int F_G0_Z = 1000;							// Speed of G0 move of Z
+	int F_G1_support = 150;					// Speed of G1 support material (normal 2ed~layers)
+	int F_G1_original = 150;					// Speed of G1 original material (normal 2ed~layers)
+	int F_G1_1stlayer = 150;					// Speed of G1(special 1st layer)
+	int F_PumpBack = 1000;						// Speed of F_PumpBack
+	int F_PumpCompensate = 1000;				// Speed of PumpCompensate
+
+	double E_PumpBack = -12;					// The extruder pump back Xmm
+	double E_PumpCompensate = 11;				// The extruder pump compensate Xmm
+	double E_PumpCompensateL1 = 15;				// The extruder pump compensate for 1st layer Xmm
+	double E_PumpCompensateNewE = 12;			// The extruder pump compensate for new type layer Xmm
+
+	// important parameter for extruder 3
+	double xExtuderOffset = E3_xOff;
+	double yExtuderOffset = E3_yOff;
+
+	char targetFilename[1024];
+	std::sprintf(targetFilename, "%s%s", "../2_GenratedGcode/", rltDir.c_str());
+	FILE* fp = fopen(targetFilename, "w");
+	if (!fp) {
+		perror("Couldn't open the directory");
+		return;
+	}
+
+	// Record the max Z for security consideration (1st printed layer)
+	GLKPOSITION layer1st_Pos = polygenMesh_Waypoints->GetMeshList().FindIndex(GcodeGeneRange_From);
+	QMeshPatch* layer1st_WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetAt(layer1st_Pos);
+
+	double Z_max = -99999.9;
+	for (GLKPOSITION Pos = layer1st_WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
+		QMeshNode* Node = (QMeshNode*)layer1st_WayPointPatch->GetNodeList().GetNext(Pos);
+
+		double Pz = Node->m_XYZBCE[2];
+		if (Pz > Z_max) { Z_max = Pz; }
+	}
+	// Record the layer type of 1st Layer
+	bool IsSupportLayer_last = layer1st_WayPointPatch->isSupportLayer;
+
+	// Give the start message of G_code
+	if (layer1st_WayPointPatch->isSupportLayer == true) {
+		std::fprintf(fp, "T1");
+		std::fprintf(fp, "G92 E0");
+	}
+	else {
+		std::fprintf(fp, "T0");
+		std::fprintf(fp, "G92 E0");
+	}
+
+
+	for (GLKPOSITION Pos = polygenMesh_Waypoints->GetMeshList().GetHeadPosition(); Pos;) {
+		QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetNext(Pos);
+
+		if (WayPointPatch->GetIndexNo() < GcodeGeneRange_From || WayPointPatch->GetIndexNo() > GcodeGeneRange_To) continue;
+
+		for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
+			QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
+			double X = Node->m_XYZBCE[0]; double Y = Node->m_XYZBCE[1]; double Z = Node->m_XYZBCE[2];
+			double B = Node->m_XYZBCE[3]; double C = Node->m_XYZBCE[4]; double E = Node->m_XYZBCE[5];
+
+			// check the huge change of C angle
+			if (Node->GetIndexNo() != 0)
+			{
+				GLKPOSITION prevPos = WayPointPatch->GetNodeList().Find(Node)->prev;
+				QMeshNode* prevNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(prevPos);
+
+				double C_prev = prevNode->m_XYZBCE[4];
+
+				if (abs(C - C_prev) > 300
+					&& prevNode->m_largeJumpFlag != 1 && Node->m_largeJumpFlag != -1
+					&& Node->isCollisionEnd == false && Node->isCollisionStart == false
+					&& Node->isNegZStart == false && Node->isNegZEnd == false) {
+
+					Node->isHighLight = true;
+					cerr << "abs(C - C_prev) ERROR! " << abs(C - C_prev) << std::endl;
+					cout << prevNode->m_largeJumpFlag << Node->m_largeJumpFlag << Node->isCollisionEnd << prevNode->isCollisionStart << endl;
+					cout << "WayPointPatch->GetIndexNo() " << WayPointPatch->GetIndexNo() << endl;
+				}
+
+			}
+			// check the negative Z motion
+			//if (Z < 0.0) { cout << "Z sitll < 0.0" << endl; }
+			// increase the extrusion of first layer
+			if (WayPointPatch->GetIndexNo() == GcodeGeneRange_From) { E = E * 1.1; }//?
+
+			//modify the xy-offset according to the extruder
+			if (WayPointPatch->isSupportLayer == true) {
+				X = X + xExtuderOffset;
+				Y = Y + yExtuderOffset;
+			}
+			// Record the max Z for security consideration (rest layers)
+
+			//this part should be calculated in workspace and turn back to the world space again.
+			if (Z > Z_max) { Z_max = Z; }
+
+			// Add some auxiliary G code
+			if (Node->GetIndexNo() == 0) {
+
+				if (WayPointPatch->GetIndexNo() == 0) {
+					// move to start of printing location
+					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
+					// slowly lower for printing
+					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_compensateUpDistance), F_G0_Z);
+					// zero extruded length(set E axis to 0)
+					std::fprintf(fp, "G92 E0\n");
+					std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensateL1, F_PumpCompensate);
+					std::fprintf(fp, "G92 E0\n");
+					std::fprintf(fp, "G1 F%d\n", F_G1_1stlayer);
+				}
+				else if (WayPointPatch->isSupportLayer == IsSupportLayer_last) {
+					std::fprintf(fp, "G92 E0\n");
+					std::fprintf(fp, "G0 E%.3f F%d\n", E_PumpBack, F_PumpBack);
+					std::fprintf(fp, "G92 E0\n");
+					// return to the safe point Z_max + Z_high
+					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_high), F_G0_Z);
+					// move to start of printing location
+					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
+					// slowly lower for printing
+					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
+
+					if (WayPointPatch->isSupportLayer == true) {
+						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensate * 1.2, F_PumpCompensate);
+						std::fprintf(fp, "G92 E0\n");
+						std::fprintf(fp, "G1 F%d\n", F_G1_support);
+					}
+					else {
+						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensate, F_PumpCompensate);
+						std::fprintf(fp, "G92 E0\n");
+						std::fprintf(fp, "G1 F%d\n", F_G1_original);
+					}
+
+				}
+				// the special case: exchange extruder
+				else {
+					std::fprintf(fp, "G92 E0\n");
+					std::fprintf(fp, "G0 E%.3f F%d\n", E_PumpBack, F_PumpBack);
+					// return to the home point Z_home
+					std::fprintf(fp, "G0 Z%.3f F%d\n", Z_home, F_G0_Z);
+
+					// change extruder
+					if (WayPointPatch->isSupportLayer == true)
+					{
+						std::fprintf(fp, "M104 S%d T%d\n", sTemperature, sExtruder);
+					}
+					else { std::fprintf(fp, "M104 S%d T%d\n", iTemperature, iExtruder); }
+					std::fprintf(fp, "G92 E0\n");
+
+					// move to start of printing location
+					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
+					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
+
+
+					if (WayPointPatch->isSupportLayer == true) {
+						// slowly lower for printing
+						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensateNewE * 1.2, F_PumpCompensate);
+						std::fprintf(fp, "G92 E0\n");
+						std::fprintf(fp, "G1 F%d\n", F_G1_support);
+					}
+					else {
+						// slowly lower for printing
+						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensateNewE, F_PumpCompensate);
+						std::fprintf(fp, "G92 E0\n");
+						std::fprintf(fp, "G1 F%d\n", F_G1_original);
+					}
+				}
+				std::fprintf(fp, "G1 X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f\n", X, Y, Z, B, C, E);
+			}
+			else {
+				// Consider the waypoints with too large Length OR large Singularity areas
+				if (Node->m_largeJumpFlag == -1 || Node->isSingularSecEndNode || Node->isCollisionStart || Node->isCollisionEnd || Node->isNegZStart || Node->isNegZEnd) {
+
+					//GLKPOSITION prevPos = WayPointPatch->GetNodeList().Find(Node)->prev;
+					//QMeshNode* prevNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(prevPos);
+					//double oldZ = prevNode->m_XYZBCE[2];
+					//double odlE = prevNode->m_XYZBCE[5];
+
+					//std::cout << Node->m_XYZBCE[5] << std::endl;
+					//std::cout << "oldE = "<<odlE << std::endl;
+
+					if (WayPointPatch->isSupportLayer == true) {
+						//std::fprintf(fp, "G0 E%.3f F%d\n", (odlE + E_PumpBack * 1.95), F_PumpBack);
+						//std::fprintf(fp, "G0 Z%.3f F%d\n", (max(Z_max, oldZ) + Z_high), F_G0_Z);
+						std::fprintf(fp, "G0 E%.3f F%d\n", (E + E_PumpBack * 1.4), F_PumpBack);
+						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_high), F_G0_Z);
+						std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
+						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
+						std::fprintf(fp, "G0 E%.3f F%d\n", (E - 0.1), F_PumpCompensate);
+						std::fprintf(fp, "G0 Z%.3f E%.3f F%d\n", Z, E, F_G1_support);
+					}
+					else {
+						//std::fprintf(fp, "G0 E%.3f F%d\n", (odlE + E_PumpBack * 0.8), F_PumpBack);
+						//std::fprintf(fp, "G0 Z%.3f F%d\n", (max(Z_max, oldZ) + Z_high), F_G0_Z);
+						std::fprintf(fp, "G0 E%.3f F%d\n", (E + E_PumpBack * 0.8), F_PumpBack);
+						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_high), F_G0_Z);
+						std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
+						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
+						std::fprintf(fp, "G0 E%.3f F%d\n", (E - 0.1), F_PumpCompensate);
+						std::fprintf(fp, "G0 Z%.3f E%.3f F%d\n", Z, E, F_G1_original);
+					}
+
+					//std::cout << "oldE = " << odlE << std::endl;
+
+				}
+				std::fprintf(fp, "G1 X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f\n", X, Y, Z, B, C, E);
+			}
+			//std::cout << E << std::endl;
+		}
+
+		IsSupportLayer_last = WayPointPatch->isSupportLayer;
+	}
+
+	std::fprintf(fp, "G92 E0\n");
+	std::fprintf(fp, "G0 E%.3f F%d\n", E_PumpBack, F_G0_XYBC); // PumpBack
+	std::fprintf(fp, "G0 Z%.3f F%d\n", Z_home, F_G0_Z); // return to the home point Z_home
+	std::fprintf(fp, "G0 X0 Y0 B0 C0 F%d\n", F_G0_XYBC);
+	std::fprintf(fp, "M30\n");// Stop all of the motion
+
+	std::fclose(fp);
+
+	std::cout << "------------------------------------------- " << rltDir << " Gcode Write Finish!\n" << std::endl;
 }

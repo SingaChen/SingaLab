@@ -562,10 +562,16 @@ void MainWindow::MoveHandleRegion() {
 void MainWindow::tianGcode2ABB()
 {
 	fiveAxisPoint* initialpoint = new fiveAxisPoint();
+	bool Yup2Zup_switch = 1;
+	double Xoff = 0;
+	double Yoff = 0;
+	double Zoff = 0;
+
+
 	initialpoint->natSort(ui->lineEdit_PosNorFileDir->text(), wayPointFileCell);
-	initialpoint->readWayPointData(ui->lineEdit_PosNorFileDir->text(),&polygenMeshList,wayPointFileCell, pGLK);
+	initialpoint->readWayPointData(ui->lineEdit_PosNorFileDir->text(), Yup2Zup_switch,Xoff,Yoff,Zoff,&polygenMeshList,wayPointFileCell, pGLK);
 	updateTree();
-	pGLK->refresh(true);
+	viewAllWaypointLayers();
 	updateTree();
 	if (ui->checkBox_varyHeight->isChecked() == true) 
 	{
@@ -577,35 +583,70 @@ void MainWindow::tianGcode2ABB()
 		}
 		else 
 		{
-			initialpoint->readSliceData(ui->lineEdit_OFFLayerFile->text(),&polygenMeshList, sliceSetFileCell,pGLK); 
-			pGLK->refresh(true);
+			initialpoint->readSliceData(ui->lineEdit_OFFLayerFile->text(), Yup2Zup_switch, Xoff, Yoff, Zoff ,&polygenMeshList, sliceSetFileCell,pGLK);
+			
 			updateTree();
+			viewAllWaypointLayers();
 		}
 	}
 	initialpoint->readExtruderHeadfile("extruderHead.obj", &polygenMeshList, pGLK);
 	updateTree();
-	pGLK->refresh(true);
+	
 	initialpoint->readPlatformfile("printingPlatform.obj", &polygenMeshList, pGLK);
 	updateTree();
-	pGLK->refresh(true);
 
-	PolygenMesh* polygenMesh_Slices;
-	PolygenMesh* polygenMesh_Waypoints;
-	PolygenMesh* polygenMesh_extruderHead;
+	std::cout << "Gcode Generation__ Running ..." << std::endl;
+
+	int GcodeGeneRange_From = 0;
+	int GcodeGeneRange_To = wayPointFileCell.size() - 1;
+	bool varyThickness_switch = ui->checkBox_varyHeight->isChecked();
+	double UpZHeight = 0;
+	bool varyWidth_switch = false;
+	bool collisionDetection_switch = ui->checkBox_collisionDetection->isChecked();
+	bool testXYZBCE_switch = false;
+	bool testLayerHeight_switch = false;
+	bool testW_switch = false;
+	string targetFileName = (ui->lineEdit_targetFileName->text()).toStdString();
+	double E3_Xoff = 0;
+	double E3_Yoff = 0;
+	double Xmove = 0;
+	double Ymove = 0;
+	PolygenMesh* Slices;
+	PolygenMesh* Waypoints;
+	PolygenMesh* extruderHead;
+	PolygenMesh* PrintPlatform;
 	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
 		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
-		if ("Slices" == polygenMesh->getModelName()) { polygenMesh_Slices = polygenMesh; }
-		if ("Waypoints" == polygenMesh->getModelName()) { polygenMesh_Waypoints = polygenMesh; }
-		if ("ExtruderHead" == polygenMesh->getModelName()) { polygenMesh_extruderHead = polygenMesh; }
+		if ("Slices" == polygenMesh->getModelName()) { Slices = polygenMesh; }
+		if ("Waypoints" == polygenMesh->getModelName()) { Waypoints = polygenMesh; }
+		if ("ExtruderHead" == polygenMesh->getModelName()) { extruderHead = polygenMesh; }
+		if ("PrintPlatform" == polygenMesh->getModelName()) { PrintPlatform = polygenMesh; }
 	}
-	initialpoint->getLayerHeight(polygenMesh_Slices, polygenMesh_Waypoints, ui->checkBox_varyHeight->isChecked());
-	initialpoint->getUpZwayPnts(polygenMesh_Waypoints);
-	initialpoint->singularityOpt(polygenMesh_Waypoints);
-	//initialpoint->detectCollision(polygenMesh_Waypoints, polygenMesh_extruderHead, ui->checkBox_collisionDetection->isChecked());
-	//initialpoint->height2E(polygenMesh_Waypoints, ui->checkBox_varyHeight->isChecked());
-	//initialpoint->writeGcode(polygenMesh_Waypoints, ui->lineEdit_targetFileName->text().toStdString());
-	//pGLK->refresh(true);
-	//delete initialpoint;
-	//std::cout << "Function __GcodeGeneration__ End." << std::endl;
+	initialpoint->getLayerHeight(Slices, Waypoints, PrintPlatform, varyThickness_switch, GcodeGeneRange_From, GcodeGeneRange_To, false, UpZHeight, Xmove, Ymove);
+	initialpoint->singularityOpt(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To);
+	initialpoint->height2E(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To, varyThickness_switch);
+	initialpoint->writeGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
+	viewAllWaypointLayers();
+	pGLK->refresh(true);
+	delete initialpoint;
+	
 }
 
+void MainWindow::viewAllWaypointLayers() 
+{
+	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
+		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
+		if ("Waypoints" != polygenMesh->getModelName() && "Slices" != polygenMesh->getModelName()) continue;
+
+		for (GLKPOSITION posMesh = polygenMesh->GetMeshList().GetHeadPosition(); posMesh != nullptr;) {
+			QMeshPatch* Patch = (QMeshPatch*)polygenMesh->GetMeshList().GetNext(posMesh);
+			Patch->drawThisWaypointPatch = true;
+
+			Patch->drawSingularity = false;
+			/*if (ui->checkBox_showSingularityNode->isChecked()) {
+				Patch->drawSingularity = true;
+			}*/
+		}
+	}
+	pGLK->refresh(true);
+}

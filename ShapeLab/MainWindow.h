@@ -73,6 +73,8 @@ private slots:
     void on_pushButton_clearAll_clicked();
     void on_treeView_clicked(const QModelIndex &index);
 
+    void viewAllWaypointLayers();
+
 	/*This is shape up deformation*/
 	void runShapeUpDeformation(); 
 };

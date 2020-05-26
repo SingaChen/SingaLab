@@ -43,12 +43,12 @@ public:
 	/*readWayPointData will build up a Polygenmesh in polygenmeshilist,
 	  and this polygenmesh contain the data of waypoint something like xyznxnynz,
 	  also, it will display the model in the view window and model tree*/
-	void readWayPointData(QString packName, GLKObList *polygenMeshList, vector<string> wayPointFileCell, GLKLib* pGLK);
+	void readWayPointData(QString packName, bool Yup2Zup_switch, double Zoff, double Xoff, double Yoff,GLKObList *polygenMeshList, vector<string> wayPointFileCell, GLKLib* pGLK);
 	
 	/*readSliceData will build up a Polygenmesh in polygenmeshilist,
 	  and this polygenmesh contain the data of each layer,
 	  also, it will display the model in the view window and model tree*/
-	void readSliceData(QString sliceSetName, GLKObList *polygenMeshList, vector<string> sliceSetFileCell, GLKLib* pGLK);
+	void readSliceData(QString sliceSetName, bool Yup2Zup_switch, double Zoff, double Xoff, double Yoff, GLKObList *polygenMeshList, vector<string> sliceSetFileCell, GLKLib* pGLK);
 	
 	/*readExtruderHeadfile will build up a Polygenmesh in polygenmeshilist,
 	  and this polygenmesh contain the data of ExtruderHead,
@@ -63,25 +63,26 @@ public:
 	/*getLayerHeight will build up a Polygenmesh in polygenmeshilist,
 	  and this polygenmesh contain the data of platform,
 	  also, it will display the model in the view window and model tree*/
-	void getLayerHeight(PolygenMesh* polygenMesh_Slices, PolygenMesh* polygenMesh_Waypoints, bool varyThickness_switch);
-	
+	void getLayerHeight(PolygenMesh* polygenMesh_Slices, PolygenMesh* polygenMesh_Waypoints, PolygenMesh* polygenMesh_PrintPlatform,
+		bool varyThickness_switch, int GcodeGeneRange_From, int GcodeGeneRange_To, bool upPlate2Height_switch, double upZdist, double Xmove = 0.0, double Ymove = 0.0);
 	void getUpZwayPnts(PolygenMesh* polygenMesh_Waypoints);
-	void singularityOpt(PolygenMesh* polygenMesh_Waypoints);
+	void singularityOpt(PolygenMesh* polygenMesh_Waypoints, int GcodeGeneRange_From, int GcodeGeneRange_To);
 	void detectCollision(PolygenMesh* polygenMesh_Waypoints, PolygenMesh* polygenMesh_extruderHead, bool func_switch);
-	void height2E(PolygenMesh* polygenMesh_Waypoints, bool func_switch);
-	void writeGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir);
+	void height2E(PolygenMesh* polygenMesh_Waypoints, int GcodeGeneRange_From, int GcodeGeneRange_To, bool func_switch);
+	void writeGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir, int GcodeGeneRange_From, int GcodeGeneRange_To, double E3_xOff, double E3_yOff);
 	void isLargeLength(QMeshPatch* WayPointPatch);
+	void getD(QMeshPatch* WayPointPatch);
 	void normalSmooth(QMeshPatch* WayPointPatch, int loop, bool smoothSwitch);
 	void getRawCdata(QMeshPatch* WayPointPatch, double lambda);
 	void getDangerSec(QMeshPatch* WayPointPatch, MatrixXf& sectionTable);
-	void getNewPntNor(QMeshPatch* WayPointPatch, const MatrixXf& sectionTable, double lambda);
-	void getCspacePnt(vector<double>& CspacePnt, int PntIndex, QMeshPatch* WayPointPatch);
-	double getRotRadius(vector<double>& srtPnt, vector<double>& endPnt, double minR, vector<double>& srtPnt_temp, vector<double>& endPnt_temp);
-	int getQuadrant(vector<double>& quadPnt);
-	int getRotSign(int quadSrt, int quadEnd, vector<double>& srtPnt, vector<double>& endPnt);
-	double getVec2Angle(vector<double>& srtPnt, vector<double>& endPnt);
-	void getXYZBCE(QMeshPatch* WayPointPatch, int layersNoSolve);
+	void getBC2(QMeshPatch* WayPointPatch, int layersNoSolve, MatrixXf& B1C1table, MatrixXf& B2C2table);
+	void motionPlanning(QMeshPatch* WayPointPatch, const MatrixXf& sectionTable, const MatrixXf& B1C1table, const MatrixXf& B2C2table);
+	void getXYZ(QMeshPatch* WayPointPatch);
 	void optimizationC(QMeshPatch* WayPointPatch);
+	void writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir, int GcodeGeneRange_From, int GcodeGeneRange_To, double E3_xOff, double E3_yOff);
+
+
+
 	void testXYZBCE(QMeshPatch* WayPointPatch, string Dir, bool testSwitch);
 	void testLayerHeight(QMeshPatch* WayPointPatch, string Dir, bool testSwitch);
 	QHULLSET* buildConvexHull_extruderHead(QMeshPatch* eHead);

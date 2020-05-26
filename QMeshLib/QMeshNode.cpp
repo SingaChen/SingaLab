@@ -10,107 +10,112 @@
 #include "QMeshNode.h"
 #include <iostream>
 
+#define PI		3.141592654
+#define DEGREE_TO_ROTATE(x)		0.0174532922222*x
+#define ROTATE_TO_DEGREE(x)		57.295780490443*x
+
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
 QMeshNode::QMeshNode()
 {
-    indexno=0;		m_trackingFace=nullptr;
-    m_meanCurvatureNormalVector[0]=0.0;
-    m_meanCurvatureNormalVector[1]=0.0;
-    m_meanCurvatureNormalVector[2]=0.0;
-    m_gaussianCurvature=0.0;	m_pMaxCurvature=0.0;	m_pMinCurvature=0.0;
-    m_boundaryDist=0.0;
-	faceList.RemoveAll();
-	edgeList.RemoveAll();
-	nodeList.RemoveAll();
-	for(int i=0;i<8;i++) flags[i]=false;
+    indexno = 0;		m_trackingFace = nullptr;
+    m_meanCurvatureNormalVector[0] = 0.0;
+    m_meanCurvatureNormalVector[1] = 0.0;
+    m_meanCurvatureNormalVector[2] = 0.0;
+    m_gaussianCurvature = 0.0;	m_pMaxCurvature = 0.0;	m_pMinCurvature = 0.0;
+    m_boundaryDist = 0.0;
+    faceList.RemoveAll();
+    edgeList.RemoveAll();
+    nodeList.RemoveAll();
+    for (int i = 0; i < 8; i++) flags[i] = false;
 
-    m_trackingPos[0]=0.0;
-    m_trackingPos[1]=0.0;
-    m_trackingPos[2]=0.0;
-    attachedPointer=nullptr;
+    m_trackingPos[0] = 0.0;
+    m_trackingPos[1] = 0.0;
+    m_trackingPos[2] = 0.0;
+    attachedPointer = nullptr;
 }
 
 QMeshNode::~QMeshNode()
 {
-	faceList.RemoveAll();
-	edgeList.RemoveAll();
-	nodeList.RemoveAll();
+    faceList.RemoveAll();
+    edgeList.RemoveAll();
+    nodeList.RemoveAll();
 }
 
 //////////////////////////////////////////////////////////////////////
 // Implementation
 //////////////////////////////////////////////////////////////////////
 
-int QMeshNode::GetIndexNo() 
+int QMeshNode::GetIndexNo()
 {
-	return indexno;
-}
-	
-void QMeshNode::SetIndexNo( const int _index )
-{
-	indexno=_index;
+    return indexno;
 }
 
-bool QMeshNode::GetAttribFlag( const int whichBit )
+void QMeshNode::SetIndexNo(const int _index)
 {
-	return flags[whichBit];
+    indexno = _index;
 }
 
-void QMeshNode::SetAttribFlag( const int whichBit, const bool toBe )
+bool QMeshNode::GetAttribFlag(const int whichBit)
 {
-	flags[whichBit]=toBe;
+    return flags[whichBit];
 }
 
-void QMeshNode::GetCoord2D( double &x, double &y )
+void QMeshNode::SetAttribFlag(const int whichBit, const bool toBe)
 {
-	x=coord2D[0];	y=coord2D[1];
+    flags[whichBit] = toBe;
 }
 
-void QMeshNode::SetCoord2D( double x, double y )
+void QMeshNode::GetCoord2D(double& x, double& y)
 {
-	coord2D[0]=x;	coord2D[1]=y;
+    x = coord2D[0];	y = coord2D[1];
 }
 
-void QMeshNode::GetCoord3D( double &x, double &y, double &z )
+void QMeshNode::SetCoord2D(double x, double y)
 {
-	x=coord3D[0];	y=coord3D[1];	z=coord3D[2];
+    coord2D[0] = x;	coord2D[1] = y;
 }
 
-void QMeshNode::SetCoord3D( double x, double y, double z )
+void QMeshNode::GetCoord3D(double& x, double& y, double& z)
 {
-	coord3D[0]=x;	coord3D[1]=y;	coord3D[2]=z;
+    x = coord3D[0];	y = coord3D[1];	z = coord3D[2];
 }
 
-void QMeshNode::GetCoord3D_last( double &x, double &y, double &z )
+void QMeshNode::SetCoord3D(double x, double y, double z)
 {
-	x=coord3D_last[0];	y=coord3D_last[1];	z=coord3D_last[2];
+    coord3D[0] = x;	coord3D[1] = y;	coord3D[2] = z;
 }
 
-void QMeshNode::SetCoord3D_last( double x, double y, double z )
+void QMeshNode::GetCoord3D_last(double& x, double& y, double& z)
 {
-	coord3D_last[0]=x;	coord3D_last[1]=y;	coord3D_last[2]=z;
+    x = coord3D_last[0];	y = coord3D_last[1];	z = coord3D_last[2];
+}
+
+void QMeshNode::SetCoord3D_last(double x, double y, double z)
+{
+    coord3D_last[0] = x;	coord3D_last[1] = y;	coord3D_last[2] = z;
 }
 
 void QMeshNode::SetMeanCurvatureNormalVector(double kHx, double kHy, double kHz)
 {
-    m_meanCurvatureNormalVector[0]=kHx;
-    m_meanCurvatureNormalVector[1]=kHy;
-    m_meanCurvatureNormalVector[2]=kHz;
+    m_meanCurvatureNormalVector[0] = kHx;
+    m_meanCurvatureNormalVector[1] = kHy;
+    m_meanCurvatureNormalVector[2] = kHz;
 }
 
-void QMeshNode::GetMeanCurvatureNormalVector(double &kHx, double &kHy, double &kHz)
+void QMeshNode::GetMeanCurvatureNormalVector(double& kHx, double& kHy, double& kHz)
 {
-    kHx=m_meanCurvatureNormalVector[0];
-    kHy=m_meanCurvatureNormalVector[1];
-    kHz=m_meanCurvatureNormalVector[2];
+    kHx = m_meanCurvatureNormalVector[0];
+    kHy = m_meanCurvatureNormalVector[1];
+    kHz = m_meanCurvatureNormalVector[2];
 }
 
 void QMeshNode::SetGaussianCurvature(double kG)
 {
-    m_gaussianCurvature=kG;
+    m_gaussianCurvature = kG;
 }
 
 double QMeshNode::GetGaussianCurvature()
@@ -120,7 +125,7 @@ double QMeshNode::GetGaussianCurvature()
 
 void QMeshNode::SetPMaxCurvature(double k1)
 {
-    m_pMaxCurvature=k1;
+    m_pMaxCurvature = k1;
 }
 
 double QMeshNode::GetPMaxCurvature()
@@ -130,7 +135,7 @@ double QMeshNode::GetPMaxCurvature()
 
 void QMeshNode::SetPMinCurvature(double k2)
 {
-    m_pMinCurvature=k2;
+    m_pMinCurvature = k2;
 }
 
 double QMeshNode::GetPMinCurvature()
@@ -140,27 +145,27 @@ double QMeshNode::GetPMinCurvature()
 
 void QMeshNode::SetMinCurvatureVector(double vx, double vy, double vz)
 {
-    m_minCurvatureVector[0]=vx;	m_minCurvatureVector[1]=vy;	m_minCurvatureVector[2]=vz;
+    m_minCurvatureVector[0] = vx;	m_minCurvatureVector[1] = vy;	m_minCurvatureVector[2] = vz;
 }
 
-void QMeshNode::GetMinCurvatureVector(double &vx, double &vy, double &vz)
+void QMeshNode::GetMinCurvatureVector(double& vx, double& vy, double& vz)
 {
-    vx=m_minCurvatureVector[0];	vy=m_minCurvatureVector[1];	vz=m_minCurvatureVector[2];
+    vx = m_minCurvatureVector[0];	vy = m_minCurvatureVector[1];	vz = m_minCurvatureVector[2];
 }
 
 void QMeshNode::SetMaxCurvatureVector(double vx, double vy, double vz)
 {
-    m_maxCurvatureVector[0]=vx;	m_maxCurvatureVector[1]=vy;	m_maxCurvatureVector[2]=vz;
+    m_maxCurvatureVector[0] = vx;	m_maxCurvatureVector[1] = vy;	m_maxCurvatureVector[2] = vz;
 }
 
-void QMeshNode::GetMaxCurvatureVector(double &vx, double &vy, double &vz)
+void QMeshNode::GetMaxCurvatureVector(double& vx, double& vy, double& vz)
 {
-    vx=m_maxCurvatureVector[0];	vy=m_maxCurvatureVector[1];	vz=m_maxCurvatureVector[2];
+    vx = m_maxCurvatureVector[0];	vy = m_maxCurvatureVector[1];	vz = m_maxCurvatureVector[2];
 }
 
 void QMeshNode::SetBoundaryDis(double dist)
 {
-    m_boundaryDist=dist;
+    m_boundaryDist = dist;
 }
 
 double QMeshNode::GetBoundaryDis()
@@ -171,157 +176,173 @@ double QMeshNode::GetBoundaryDis()
 void QMeshNode::CalNormal()
 {
     double nx, ny, nz, tt;
-    nx=0.0;	ny=0.0;	nz=0.0;
+    nx = 0.0;	ny = 0.0;	nz = 0.0;
 
     GLKPOSITION Pos;
-    for(Pos=faceList.GetHeadPosition();Pos!=nullptr;)
+    for (Pos = faceList.GetHeadPosition(); Pos != nullptr;)
     {
-        double a,b,c,d;
-        QMeshFace *temp=(QMeshFace *)(faceList.GetNext(Pos));
-		if (temp->inner == true) continue;
-        temp->GetPlaneEquation(a,b,c,d);
-        nx+=a;	ny+=b;	nz+=c;
+        double a, b, c, d;
+        QMeshFace* temp = (QMeshFace*)(faceList.GetNext(Pos));
+        if (temp->inner == true) continue;
+        temp->GetPlaneEquation(a, b, c, d);
+        nx += a;	ny += b;	nz += c;
     }
-    tt=nx*nx+ny*ny+nz*nz;
-    tt=sqrt(tt);
+    tt = nx * nx + ny * ny + nz * nz;
+    tt = sqrt(tt);
 
-    m_normal[0]=(double)(nx/tt);	m_normal[1]=(double)(ny/tt);	m_normal[2]=(double)(nz/tt);
+    m_normal[0] = (double)(nx / tt);	m_normal[1] = (double)(ny / tt);	m_normal[2] = (double)(nz / tt);
 }
 
 void QMeshNode::CalNormal(double normal[])
 {
     double nx, ny, nz, tt;
-	nx=0.0;	ny=0.0;	nz=0.0;
+    nx = 0.0;	ny = 0.0;	nz = 0.0;
 
-	GLKPOSITION Pos;
-    for(Pos=faceList.GetHeadPosition();Pos!=nullptr;)
-	{
-		double a,b,c,d;
-		QMeshFace *temp=(QMeshFace *)(faceList.GetNext(Pos));
-		if (temp->inner == true) continue;
-		temp->GetPlaneEquation(a,b,c,d);
-		//std::cout << a << b << c << d << std::endl;
-		nx+=a;	ny+=b;	nz+=c;
-	}
-	tt=nx*nx+ny*ny+nz*nz;
-	tt=sqrt(tt);
+    GLKPOSITION Pos;
+    for (Pos = faceList.GetHeadPosition(); Pos != nullptr;)
+    {
+        double a, b, c, d;
+        QMeshFace* temp = (QMeshFace*)(faceList.GetNext(Pos));
+        if (temp->inner == true) continue;
+        temp->GetPlaneEquation(a, b, c, d);
+        //std::cout << a << b << c << d << std::endl;
+        nx += a;	ny += b;	nz += c;
+    }
+    tt = nx * nx + ny * ny + nz * nz;
+    tt = sqrt(tt);
 
-    m_normal[0]=(double)(nx/tt);	m_normal[1]=(double)(ny/tt);	m_normal[2]=(double)(nz/tt);
-    normal[0]=m_normal[0]; normal[1]=m_normal[1]; normal[2]=m_normal[2];
+    m_normal[0] = (double)(nx / tt);	m_normal[1] = (double)(ny / tt);	m_normal[2] = (double)(nz / tt);
+    normal[0] = m_normal[0]; normal[1] = m_normal[1]; normal[2] = m_normal[2];
 }
 
 void QMeshNode::SetMeshPatchPtr(QMeshPatch* _mesh)
 {
-	meshSurface=_mesh;
+    meshSurface = _mesh;
 }
 
 QMeshPatch* QMeshNode::GetMeshPatchPtr()
 {
-	return meshSurface;
+    return meshSurface;
 }
 
-void QMeshNode::AddTetra(QMeshTetra *trglTetra)
+void QMeshNode::AddTetra(QMeshTetra* trglTetra)
 {
-	tetraList.AddTail(trglTetra);
+    tetraList.AddTail(trglTetra);
 }
 
 int QMeshNode::GetTetraNumber()
 {
-	return tetraList.GetCount();
+    return tetraList.GetCount();
 }
 
 QMeshTetra* QMeshNode::GetTetraRecordPtr(int No) //from 1 to n
 {
-	if ((No < 1) || (No > tetraList.GetCount()))    return  NULL;
-	return (QMeshTetra *)tetraList.GetAt(tetraList.FindIndex(No - 1));
+    if ((No < 1) || (No > tetraList.GetCount()))    return  NULL;
+    return (QMeshTetra*)tetraList.GetAt(tetraList.FindIndex(No - 1));
 }
 
 GLKObList& QMeshNode::GetTetraList()
 {
-	return tetraList;
+    return tetraList;
 }
 
-void QMeshNode::AddFace(QMeshFace *_face)
+void QMeshNode::AddFace(QMeshFace* _face)
 {
-	faceList.AddTail(_face);
+    faceList.AddTail(_face);
 }
 
-int QMeshNode::GetFaceNumber() 
+int QMeshNode::GetFaceNumber()
 {
-	return faceList.GetCount();
+    return faceList.GetCount();
 }
 
 QMeshFace* QMeshNode::GetFaceRecordPtr(int No) 	//from 1 to n
 {
-    if( (No < 1) || (No > faceList.GetCount()))    return  nullptr;
-    return (QMeshFace *)faceList.GetAt(faceList.FindIndex(No-1));
+    if ((No < 1) || (No > faceList.GetCount()))    return  nullptr;
+    return (QMeshFace*)faceList.GetAt(faceList.FindIndex(No - 1));
 }
 
 GLKObList& QMeshNode::GetFaceList()
 {
-	return faceList;
+    return faceList;
 }
 
-void QMeshNode::AddEdge(QMeshEdge *_edge)
+void QMeshNode::AddEdge(QMeshEdge* _edge)
 {
-	edgeList.AddTail(_edge);
+    edgeList.AddTail(_edge);
 }
 
-int QMeshNode::GetEdgeNumber() 
+int QMeshNode::GetEdgeNumber()
 {
-	return edgeList.GetCount();
+    return edgeList.GetCount();
 }
 
 QMeshEdge* QMeshNode::GetEdgeRecordPtr(int No) 	//from 1 to n
 {
-    if( (No < 1) || (No > edgeList.GetCount()))    return  nullptr;
-    return (QMeshEdge *)edgeList.GetAt(edgeList.FindIndex(No-1));
+    if ((No < 1) || (No > edgeList.GetCount()))    return  nullptr;
+    return (QMeshEdge*)edgeList.GetAt(edgeList.FindIndex(No - 1));
 }
 
 GLKObList& QMeshNode::GetEdgeList()
 {
-	return edgeList;
+    return edgeList;
 }
 
-void QMeshNode::AddNode(QMeshNode *_node)
+void QMeshNode::AddNode(QMeshNode* _node)
 {
-	nodeList.AddTail(_node);
+    nodeList.AddTail(_node);
 }
 
 int QMeshNode::GetNodeNumber()
 {
-	return nodeList.GetCount();
+    return nodeList.GetCount();
 }
 
-bool QMeshNode::IsNodeInNodeList(QMeshNode *_node)
+bool QMeshNode::IsNodeInNodeList(QMeshNode* _node)
 {
-	GLKPOSITION Pos;
+    GLKPOSITION Pos;
 
-    for(Pos=nodeList.GetHeadPosition();Pos!=nullptr;) {
-		QMeshNode *tempnode=(QMeshNode *)(nodeList.GetNext(Pos));
-		if (tempnode==_node) return true;
-	}
+    for (Pos = nodeList.GetHeadPosition(); Pos != nullptr;) {
+        QMeshNode* tempnode = (QMeshNode*)(nodeList.GetNext(Pos));
+        if (tempnode == _node) return true;
+    }
 
-	return false;
+    return false;
 }
 
 QMeshNode* QMeshNode::GetNodeRecordPtr(int No)	//from 1 to n
 {
     if ((No < 1) || (No > nodeList.GetCount())) return  nullptr;
-    return (QMeshNode *)nodeList.GetAt(nodeList.FindIndex(No-1));
+    return (QMeshNode*)nodeList.GetAt(nodeList.FindIndex(No - 1));
 }
 
 GLKObList& QMeshNode::GetNodeList()
 {
-	return nodeList;
+    return nodeList;
 }
 
-void QMeshNode::GetCoord3D_FLP( double &x, double &y, double &z )
+void QMeshNode::GetCoord3D_FLP(double& x, double& y, double& z)
 {
-    x=coord3D_FLP[0];	y=coord3D_FLP[1];	z=coord3D_FLP[2];
+    x = coord3D_FLP[0];	y = coord3D_FLP[1];	z = coord3D_FLP[2];
 }
 
-void QMeshNode::SetCoord3D_FLP( double x, double y, double z )
+void QMeshNode::SetCoord3D_FLP(double x, double y, double z)
 {
-   coord3D_FLP[0]=x;	coord3D_FLP[1]=y;	coord3D_FLP[2]=z;
+    coord3D_FLP[0] = x;	coord3D_FLP[1] = y;	coord3D_FLP[2] = z;
+}
+
+Eigen::Vector3d QMeshNode::calPlatformGuesture(double P_x, double P_y, double P_z, double X, double Y, double B, double C)
+{
+    Eigen::Vector3d temp;
+
+    B = DEGREE_TO_ROTATE(B);
+    C = DEGREE_TO_ROTATE(C);
+
+    double platform_X = cos(B) * cos(C) * P_x - cos(B) * sin(C) * P_y + sin(B) * P_z - X;
+    double platform_Y = sin(C) * P_x + cos(C) * P_y - Y;
+    double platform_Z = -sin(B) * cos(C) * P_x + sin(B) * sin(C) * P_y + cos(B) * P_z;
+
+    temp << platform_X, platform_Y, platform_Z;
+
+    return temp;
 }
