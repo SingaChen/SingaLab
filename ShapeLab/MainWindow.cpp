@@ -131,6 +131,7 @@ void MainWindow::createActions()
 	connect(ui->pushButton_RunDeformation, SIGNAL(released()), this, SLOT(runShapeUpDeformation()));
 	//connect(ui->pushButton_thicknessVariation, SIGNAL(released()), this, SLOT(LoadSlices()));
 	//connect(ui->pushButton_thicknessVariation, SIGNAL(released()), this, SLOT(extrude2ThicknessVariation()));	
+	//connect(ui->pushButton_RunDeformation, SIGNAL(released()), this, SLOT(runShapeUpDeformation()));
 	connect(ui->pushButton_GcodeGeneration, SIGNAL(released()), this, SLOT(runGcodeGeneration()));
 	connect(ui->pushButton_read, SIGNAL(released()), this, SLOT(tianGcode2ABB()));
 
@@ -567,7 +568,6 @@ void MainWindow::tianGcode2ABB()
 	double Yoff = 0;
 	double Zoff = 0;
 
-
 	initialpoint->natSort(ui->lineEdit_PosNorFileDir->text(), wayPointFileCell);
 	initialpoint->readWayPointData(ui->lineEdit_PosNorFileDir->text(), Yup2Zup_switch,Xoff,Yoff,Zoff,&polygenMeshList,wayPointFileCell, pGLK);
 	updateTree();
@@ -626,6 +626,7 @@ void MainWindow::tianGcode2ABB()
 	initialpoint->singularityOpt(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To);
 	initialpoint->height2E(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To, varyThickness_switch);
 	initialpoint->writeGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
+	initialpoint->writeABBGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
 	viewAllWaypointLayers();
 	pGLK->refresh(true);
 	delete initialpoint;

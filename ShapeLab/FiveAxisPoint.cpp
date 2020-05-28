@@ -1713,7 +1713,7 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 	double yExtuderOffset = E3_yOff;
 
 	char targetFilename[1024];
-	std::sprintf(targetFilename, "%s%s", "../2_GenratedGcode/", rltDir.c_str());
+	std::sprintf(targetFilename, "%s%s", "../4_ABBGcode/", rltDir.c_str());
 	FILE* fp = fopen(targetFilename, "w");
 	if (!fp) {
 		perror("Couldn't open the directory");
@@ -1736,12 +1736,12 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 
 	// Give the start message of G_code
 	if (layer1st_WayPointPatch->isSupportLayer == true) {
-		std::fprintf(fp, "T1");
-		std::fprintf(fp, "G92 E0");
+		std::fprintf(fp, "T1 \n");
+		std::fprintf(fp, "G92 E0 \n");
 	}
 	else {
-		std::fprintf(fp, "T0");
-		std::fprintf(fp, "G92 E0");
+		std::fprintf(fp, "T0 \n");
+		std::fprintf(fp, "G92 E0 \n");
 	}
 
 
@@ -1754,8 +1754,25 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 			QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
 			double X = Node->m_XYZBCE[0]; double Y = Node->m_XYZBCE[1]; double Z = Node->m_XYZBCE[2];
 			double B = Node->m_XYZBCE[3]; double C = Node->m_XYZBCE[4]; double E = Node->m_XYZBCE[5];
+			
+			//translate from CNC to ABB for IRB4600
+			X = X - 100 * sin(DEGREE_TO_ROTATE(B)); Z = Z + 100 * (1 - cos(DEGREE_TO_ROTATE(B)));
+			Eigen::Vector3f P1; P1 << X, Y, Z;
+			Eigen::Matrix3f R1; R1 << 0, -1, 0, 1, 0, 0, 0, 0, 1;
+			Eigen::Vector3f P01; P01 = R1 * P1;
+			Eigen::Matrix3f RX0; RX0 << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+			Eigen::Matrix3f RY0; RY0 << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+			Eigen::Matrix3f RZ0; RZ0 << -1, 0, 0, 0, -1, 0, 0, 0, 1;
+			Eigen::Vector3f P02; P02=RZ0*RY0*RX0*P01;
+			P02[2] = P02[2] + 920;
+			Eigen::Matrix3f RX1; RX1 << 1, 0, 0, 0, cos(0.073), -sin(DEGREE_TO_ROTATE(0.073)), 0, sin(DEGREE_TO_ROTATE(0.073)), cos(DEGREE_TO_ROTATE(0.073));
+			Eigen::Matrix3f RY1; RY1 << cos(DEGREE_TO_ROTATE(-0.1)), 0, sin(DEGREE_TO_ROTATE(0.1)), 0, 1, 0, -sin(DEGREE_TO_ROTATE(0.1)), 0, cos(DEGREE_TO_ROTATE(0.1));
+			Eigen::Matrix3f RZ1; RZ1 << cos(DEGREE_TO_ROTATE(89.87)), -sin(DEGREE_TO_ROTATE(89.87)), 0, sin(DEGREE_TO_ROTATE(89.87)), cos(DEGREE_TO_ROTATE(89.87)), 0, 0, 0, 1;
+			Eigen::Vector3f T1; T1 << 1459.306, -26.9, 2.591 + 2.07;
+			P02 = RX1 * RY1 * RZ1 * P02 + T1;
+			X = P02[0]; Y = P02[1]; Z = P02[2];
 
-			// check the huge change of C angle
+			// check the large change of C angle
 			if (Node->GetIndexNo() != 0)
 			{
 				GLKPOSITION prevPos = WayPointPatch->GetNodeList().Find(Node)->prev;
@@ -1795,72 +1812,72 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 
 				if (WayPointPatch->GetIndexNo() == 0) {
 					// move to start of printing location
-					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
+					std::fprintf(fp, "G0 F%d X%.3f Y%.3f B%.3f C%.3f \n", F_G0_XYBC, X, Y, B, C);
 					// slowly lower for printing
-					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_compensateUpDistance), F_G0_Z);
+					std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, (Z_max + Z_compensateUpDistance));
 					// zero extruded length(set E axis to 0)
-					std::fprintf(fp, "G92 E0\n");
-					std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensateL1, F_PumpCompensate);
-					std::fprintf(fp, "G92 E0\n");
-					std::fprintf(fp, "G1 F%d\n", F_G1_1stlayer);
+					std::fprintf(fp, "G92 E0 \n");
+					std::fprintf(fp, "G1 F%d E%.3f \n", F_PumpCompensate, E_PumpCompensateL1);
+					std::fprintf(fp, "G92 E0 \n");
+					std::fprintf(fp, "G1 F%d \n", F_G1_1stlayer);
 				}
 				else if (WayPointPatch->isSupportLayer == IsSupportLayer_last) {
-					std::fprintf(fp, "G92 E0\n");
-					std::fprintf(fp, "G0 E%.3f F%d\n", E_PumpBack, F_PumpBack);
-					std::fprintf(fp, "G92 E0\n");
+					std::fprintf(fp, "G92 E0 \n");
+					std::fprintf(fp, "G0 F%d E%.3f \n", F_PumpBack, E_PumpBack);
+					std::fprintf(fp, "G92 E0 \n");
 					// return to the safe point Z_max + Z_high
-					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_high), F_G0_Z);
+					std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, (Z_max + Z_high));
 					// move to start of printing location
-					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
+					std::fprintf(fp, "G0 F%d X%.3f Y%.3f B%.3f C%.3f \n", F_G0_XYBC, X, Y, B, C);
 					// slowly lower for printing
-					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
+					std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, (Z + Z_compensateUpDistance));
 
 					if (WayPointPatch->isSupportLayer == true) {
-						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensate * 1.2, F_PumpCompensate);
-						std::fprintf(fp, "G92 E0\n");
-						std::fprintf(fp, "G1 F%d\n", F_G1_support);
+						std::fprintf(fp, "G1 F%d E%.3f \n", F_PumpCompensate, E_PumpCompensate * 1.2);
+						std::fprintf(fp, "G92 E0 \n");
+						std::fprintf(fp, "G1 F%d \n", F_G1_support);
 					}
 					else {
-						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensate, F_PumpCompensate);
-						std::fprintf(fp, "G92 E0\n");
-						std::fprintf(fp, "G1 F%d\n", F_G1_original);
+						std::fprintf(fp, "G1 F%d E%.3f \n", F_PumpCompensate, E_PumpCompensate);
+						std::fprintf(fp, "G92 E0 \n");
+						std::fprintf(fp, "G1 F%d \n", F_G1_original);
 					}
 
 				}
 				// the special case: exchange extruder
 				else {
-					std::fprintf(fp, "G92 E0\n");
-					std::fprintf(fp, "G0 E%.3f F%d\n", E_PumpBack, F_PumpBack);
+					std::fprintf(fp, "G92 E0 \n");
+					std::fprintf(fp, "G0 F%d E%.3f \n", F_PumpBack, E_PumpBack);
 					// return to the home point Z_home
-					std::fprintf(fp, "G0 Z%.3f F%d\n", Z_home, F_G0_Z);
+					std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, 1200);
 
 					// change extruder
 					if (WayPointPatch->isSupportLayer == true)
 					{
-						std::fprintf(fp, "M104 S%d T%d\n", sTemperature, sExtruder);
+						std::fprintf(fp, "T%d \n", sExtruder);
 					}
-					else { std::fprintf(fp, "M104 S%d T%d\n", iTemperature, iExtruder); }
-					std::fprintf(fp, "G92 E0\n");
+					else { std::fprintf(fp, "T%d \n", iExtruder); }
+					std::fprintf(fp, "G92 E0 \n");
 
 					// move to start of printing location
-					std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
-					std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
+					std::fprintf(fp, "G0 F%d X%.3f Y%.3f B%.3f C%.3f \n", F_G0_XYBC, X, Y, B, C);
+					std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, (Z + Z_compensateUpDistance));
 
 
 					if (WayPointPatch->isSupportLayer == true) {
 						// slowly lower for printing
-						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensateNewE * 1.2, F_PumpCompensate);
-						std::fprintf(fp, "G92 E0\n");
-						std::fprintf(fp, "G1 F%d\n", F_G1_support);
+						std::fprintf(fp, "G1 F%d E%.3f \n", F_PumpCompensate, E_PumpCompensateNewE * 1.2);
+						std::fprintf(fp, "G92 E0 \n");
+						//std::fprintf(fp, "G1 F%d\n", F_G1_support);
 					}
 					else {
 						// slowly lower for printing
-						std::fprintf(fp, "G1 E%.3f F%d\n", E_PumpCompensateNewE, F_PumpCompensate);
-						std::fprintf(fp, "G92 E0\n");
-						std::fprintf(fp, "G1 F%d\n", F_G1_original);
+						std::fprintf(fp, "G1 F%d E%.3f \n", F_PumpCompensate, E_PumpCompensateNewE);
+						std::fprintf(fp, "G92 E0 \n");
+						//std::fprintf(fp, "G1 F%d\n", F_G1_original);
 					}
 				}
-				std::fprintf(fp, "G1 X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f\n", X, Y, Z, B, C, E);
+				std::fprintf(fp, "G1 X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f \n", X, Y, Z, B, C, E);
 			}
 			else {
 				// Consider the waypoints with too large Length OR large Singularity areas
@@ -1877,28 +1894,29 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 					if (WayPointPatch->isSupportLayer == true) {
 						//std::fprintf(fp, "G0 E%.3f F%d\n", (odlE + E_PumpBack * 1.95), F_PumpBack);
 						//std::fprintf(fp, "G0 Z%.3f F%d\n", (max(Z_max, oldZ) + Z_high), F_G0_Z);
-						std::fprintf(fp, "G0 E%.3f F%d\n", (E + E_PumpBack * 1.4), F_PumpBack);
-						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_high), F_G0_Z);
-						std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
-						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
-						std::fprintf(fp, "G0 E%.3f F%d\n", (E - 0.1), F_PumpCompensate);
-						std::fprintf(fp, "G0 Z%.3f E%.3f F%d\n", Z, E, F_G1_support);
+						std::fprintf(fp, "G0 F%d E%.3f \n", F_PumpBack, (E + E_PumpBack * 1.4));
+						std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, (Z_max + Z_high));
+						std::fprintf(fp, "G0 F%d X%.3f Y%.3f B%.3f C%.3f \n", F_G0_XYBC, X, Y, B, C);
+						std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, (Z + Z_compensateUpDistance));
+						std::fprintf(fp, "G0 F%d E%.3f \n", F_PumpCompensate, E);
+						std::fprintf(fp, "G0 F%d Z%.3f E%.3f \n", F_G1_support, Z, E);
 					}
 					else {
 						//std::fprintf(fp, "G0 E%.3f F%d\n", (odlE + E_PumpBack * 0.8), F_PumpBack);
 						//std::fprintf(fp, "G0 Z%.3f F%d\n", (max(Z_max, oldZ) + Z_high), F_G0_Z);
-						std::fprintf(fp, "G0 E%.3f F%d\n", (E + E_PumpBack * 0.8), F_PumpBack);
-						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z_max + Z_high), F_G0_Z);
-						std::fprintf(fp, "G0 X%.3f Y%.3f B%.3f C%.3f F%d\n", X, Y, B, C, F_G0_XYBC);
-						std::fprintf(fp, "G0 Z%.3f F%d\n", (Z + Z_compensateUpDistance), F_G0_Z);
-						std::fprintf(fp, "G0 E%.3f F%d\n", (E - 0.1), F_PumpCompensate);
-						std::fprintf(fp, "G0 Z%.3f E%.3f F%d\n", Z, E, F_G1_original);
+
+						std::fprintf(fp, "G0 F%d E%.3f \n", F_PumpBack, (E + E_PumpBack * 0.8));
+						std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, (Z_max + Z_high));
+						std::fprintf(fp, "G0 F%d X%.3f Y%.3f B%.3f C%.3f \n", F_G0_XYBC, X, Y, B, C);
+						std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, (Z + Z_compensateUpDistance));
+						std::fprintf(fp, "G0 F%d E%.3f \n", F_PumpCompensate, E);
+						std::fprintf(fp, "G0 F%d Z%.3f E%.3f \n", F_G1_support, Z, E);
 					}
 
 					//std::cout << "oldE = " << odlE << std::endl;
 
 				}
-				std::fprintf(fp, "G1 X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f\n", X, Y, Z, B, C, E);
+				std::fprintf(fp, "G1 X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f \n", X, Y, Z, B, C, E);
 			}
 			//std::cout << E << std::endl;
 		}
@@ -1906,11 +1924,11 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 		IsSupportLayer_last = WayPointPatch->isSupportLayer;
 	}
 
-	std::fprintf(fp, "G92 E0\n");
-	std::fprintf(fp, "G0 E%.3f F%d\n", E_PumpBack, F_G0_XYBC); // PumpBack
-	std::fprintf(fp, "G0 Z%.3f F%d\n", Z_home, F_G0_Z); // return to the home point Z_home
-	std::fprintf(fp, "G0 X0 Y0 B0 C0 F%d\n", F_G0_XYBC);
-	std::fprintf(fp, "M30\n");// Stop all of the motion
+	std::fprintf(fp, "G92 E0 \n");
+	std::fprintf(fp, "G0 F%d E%.3f \n", F_G0_XYBC, E_PumpBack); // PumpBack
+	std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, 1200); // return to the home point Z_home
+	std::fprintf(fp, "G0 F%d X0 Y0 B0 C0 \n", F_G0_XYBC);
+	//std::fprintf(fp, "M30\n");// Stop all of the motion
 
 	std::fclose(fp);
 
