@@ -131,18 +131,6 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_RunDeformation">
-       <property name="font">
-        <font>
-         <family>SimSun-ExtB</family>
-        </font>
-       </property>
-       <property name="text">
-        <string>Run Deformation</string>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QLabel" name="label_PosNorFile">
        <property name="font">
         <font>
@@ -160,7 +148,7 @@
        <item>
         <widget class="QLineEdit" name="lineEdit_PosNorFileDir">
          <property name="text">
-          <string>waypoint_bunnyhead_0329_70</string>
+          <string>Please push the bottom --&gt;</string>
          </property>
         </widget>
        </item>
@@ -201,7 +189,7 @@
      <item>
       <widget class="QLineEdit" name="lineEdit_OFFLayerFile">
        <property name="text">
-        <string>layer_bunnyhead_0329_70</string>
+        <string>Please push the bottom --&gt; </string>
        </property>
       </widget>
      </item>
@@ -255,14 +243,9 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_GcodeGeneration">
-       <property name="font">
-        <font>
-         <family>SimSun-ExtB</family>
-        </font>
-       </property>
+      <widget class="QPushButton" name="pushButton_test">
        <property name="text">
-        <string>G code Generation</string>
+        <string>PushButton</string>
        </property>
       </widget>
      </item>

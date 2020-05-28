@@ -28,7 +28,7 @@ public:
 
 public slots:
 	// Qtimer - defined function
-	void doTimerShapeUpDeform();
+	//void doTimerShapeUpDeform();
     void tianGcode2ABB();
 
     
@@ -43,8 +43,6 @@ private:
 private:
     void createActions();
     void createTreeView();
-	void showTetraDeformationRatio();
-	void MoveHandleRegion();
 	void QTgetscreenshoot();
 
     PolygenMesh *getSelectedPolygenMesh();
@@ -80,10 +78,10 @@ private slots:
 
     /*This is bulit by Singa */
     void selectDir();
+    void test_in_mainwindow();
 
 
 	/*This is shape up deformation*/
-	void runShapeUpDeformation(); 
 };
 
 #endif // MAINWINDOW_H

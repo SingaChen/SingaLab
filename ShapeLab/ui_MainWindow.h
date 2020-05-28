@@ -74,7 +74,6 @@ public:
     QWidget *dockWidgetContents;
     QVBoxLayout *verticalLayout;
     QCheckBox *boxDeselect;
-    QPushButton *pushButton_RunDeformation;
     QLabel *label_PosNorFile;
     QHBoxLayout *horizontalLayout_2;
     QLineEdit *lineEdit_PosNorFileDir;
@@ -85,7 +84,7 @@ public:
     QCheckBox *checkBox_collisionDetection;
     QLabel *label_targetFileName;
     QLineEdit *lineEdit_targetFileName;
-    QPushButton *pushButton_GcodeGeneration;
+    QPushButton *pushButton_test;
     QPushButton *pushButton_read;
     QTreeView *treeView;
     QPushButton *pushButton_clearAll;
@@ -301,20 +300,12 @@ public:
 
         verticalLayout->addWidget(boxDeselect);
 
-        pushButton_RunDeformation = new QPushButton(dockWidgetContents);
-        pushButton_RunDeformation->setObjectName(QString::fromUtf8("pushButton_RunDeformation"));
-        QFont font;
-        font.setFamily(QString::fromUtf8("SimSun-ExtB"));
-        pushButton_RunDeformation->setFont(font);
-
-        verticalLayout->addWidget(pushButton_RunDeformation);
-
         label_PosNorFile = new QLabel(dockWidgetContents);
         label_PosNorFile->setObjectName(QString::fromUtf8("label_PosNorFile"));
-        QFont font1;
-        font1.setBold(true);
-        font1.setWeight(75);
-        label_PosNorFile->setFont(font1);
+        QFont font;
+        font.setBold(true);
+        font.setWeight(75);
+        label_PosNorFile->setFont(font);
 
         verticalLayout->addWidget(label_PosNorFile);
 
@@ -338,7 +329,7 @@ public:
 
         label_OFFLayerFile = new QLabel(dockWidgetContents);
         label_OFFLayerFile->setObjectName(QString::fromUtf8("label_OFFLayerFile"));
-        label_OFFLayerFile->setFont(font1);
+        label_OFFLayerFile->setFont(font);
 
         verticalLayout->addWidget(label_OFFLayerFile);
 
@@ -349,20 +340,20 @@ public:
 
         checkBox_varyHeight = new QCheckBox(dockWidgetContents);
         checkBox_varyHeight->setObjectName(QString::fromUtf8("checkBox_varyHeight"));
-        checkBox_varyHeight->setFont(font1);
+        checkBox_varyHeight->setFont(font);
         checkBox_varyHeight->setChecked(false);
 
         verticalLayout->addWidget(checkBox_varyHeight);
 
         checkBox_collisionDetection = new QCheckBox(dockWidgetContents);
         checkBox_collisionDetection->setObjectName(QString::fromUtf8("checkBox_collisionDetection"));
-        checkBox_collisionDetection->setFont(font1);
+        checkBox_collisionDetection->setFont(font);
 
         verticalLayout->addWidget(checkBox_collisionDetection);
 
         label_targetFileName = new QLabel(dockWidgetContents);
         label_targetFileName->setObjectName(QString::fromUtf8("label_targetFileName"));
-        label_targetFileName->setFont(font1);
+        label_targetFileName->setFont(font);
 
         verticalLayout->addWidget(label_targetFileName);
 
@@ -371,11 +362,10 @@ public:
 
         verticalLayout->addWidget(lineEdit_targetFileName);
 
-        pushButton_GcodeGeneration = new QPushButton(dockWidgetContents);
-        pushButton_GcodeGeneration->setObjectName(QString::fromUtf8("pushButton_GcodeGeneration"));
-        pushButton_GcodeGeneration->setFont(font);
+        pushButton_test = new QPushButton(dockWidgetContents);
+        pushButton_test->setObjectName(QString::fromUtf8("pushButton_test"));
 
-        verticalLayout->addWidget(pushButton_GcodeGeneration);
+        verticalLayout->addWidget(pushButton_test);
 
         pushButton_read = new QPushButton(dockWidgetContents);
         pushButton_read->setObjectName(QString::fromUtf8("pushButton_read"));
@@ -520,17 +510,16 @@ public:
         navigationToolBar->setWindowTitle(QApplication::translate("MainWindow", "navigationToolBar", nullptr));
         selectionToolBar->setWindowTitle(QApplication::translate("MainWindow", "selectionToolBar", nullptr));
         boxDeselect->setText(QApplication::translate("MainWindow", "Deselect", nullptr));
-        pushButton_RunDeformation->setText(QApplication::translate("MainWindow", "Run Deformation", nullptr));
         label_PosNorFile->setText(QApplication::translate("MainWindow", "Position & Normal File Dir:", nullptr));
-        lineEdit_PosNorFileDir->setText(QApplication::translate("MainWindow", "waypoint_bunnyhead_0329_70", nullptr));
+        lineEdit_PosNorFileDir->setText(QApplication::translate("MainWindow", "Please push the bottom -->", nullptr));
         pushButton_selectWaypointFile->setText(QApplication::translate("MainWindow", "Open", nullptr));
         label_OFFLayerFile->setText(QApplication::translate("MainWindow", ".Off Layer File Dir:", nullptr));
-        lineEdit_OFFLayerFile->setText(QApplication::translate("MainWindow", "layer_bunnyhead_0329_70", nullptr));
+        lineEdit_OFFLayerFile->setText(QApplication::translate("MainWindow", "Please push the bottom --> ", nullptr));
         checkBox_varyHeight->setText(QApplication::translate("MainWindow", "Non-uniform Thickness", nullptr));
         checkBox_collisionDetection->setText(QApplication::translate("MainWindow", "Detect Collision", nullptr));
         label_targetFileName->setText(QApplication::translate("MainWindow", "Target File Name", nullptr));
         lineEdit_targetFileName->setText(QApplication::translate("MainWindow", "GcodeBHead.txt", nullptr));
-        pushButton_GcodeGeneration->setText(QApplication::translate("MainWindow", "G code Generation", nullptr));
+        pushButton_test->setText(QApplication::translate("MainWindow", "PushButton", nullptr));
         pushButton_read->setText(QApplication::translate("MainWindow", "read", nullptr));
         pushButton_clearAll->setText(QApplication::translate("MainWindow", "Clear All", nullptr));
         menuFile->setTitle(QApplication::translate("MainWindow", "File", nullptr));

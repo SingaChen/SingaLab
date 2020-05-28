@@ -54,7 +54,7 @@ MainWindow::MainWindow(QWidget *parent) :
     pGLK->set_tool(new GLKCameraTool(pGLK,ORBITPAN));
 	
 	//connect timer with timer function
-	connect(&deform_timer, SIGNAL(timeout()), this, SLOT(doTimerShapeUpDeform()));
+	//connect(&deform_timer, SIGNAL(timeout()), this, SLOT(doTimerShapeUpDeform()));
 }
 
 MainWindow::~MainWindow()
@@ -128,12 +128,9 @@ void MainWindow::createActions()
     connect (signalMapper, SIGNAL(mapped(int)), this, SLOT(signalNavigation(int)));
 
 	//Button
-	connect(ui->pushButton_RunDeformation, SIGNAL(released()), this, SLOT(runShapeUpDeformation()));
-	//connect(ui->pushButton_thicknessVariation, SIGNAL(released()), this, SLOT(LoadSlices()));
-	//connect(ui->pushButton_thicknessVariation, SIGNAL(released()), this, SLOT(extrude2ThicknessVariation()));	
 	connect(ui->pushButton_selectWaypointFile, SIGNAL(released()), this, SLOT(selectDir()));
-	connect(ui->pushButton_GcodeGeneration, SIGNAL(released()), this, SLOT(runGcodeGeneration()));
 	connect(ui->pushButton_read, SIGNAL(released()), this, SLOT(tianGcode2ABB()));
+	connect(ui->pushButton_test, SIGNAL(released()), this, SLOT(test_in_mainwindow()));
 
 	
 }
@@ -441,15 +438,26 @@ void MainWindow::createTreeView()
 {
     treeModel = new QStandardItemModel();
     ui->treeView->setModel(treeModel);
-    ui->treeView->setHeaderHidden(true);
+    ui->treeView->setHeaderHidden(false);
     ui->treeView->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->treeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->treeView->expandAll();
+
+	QStringList fonts;
+	fonts << "ModelName" << "ModelType" << "NodelNum" << "FaceNum";
+	treeModel->setHorizontalHeaderLabels(fonts);
+	ui->treeView->setModel(treeModel);
+
 }
 
 void MainWindow::updateTree()
 {
     treeModel->clear();
+	QStringList fonts;
+	fonts << "ModelName" << "ModelType" << "NodelNum" << "FaceNum";
+	treeModel->setHorizontalHeaderLabels(fonts);
+	ui->treeView->setModel(treeModel);
+
     for (GLKPOSITION pos=polygenMeshList.GetHeadPosition(); pos!=nullptr;){
         PolygenMesh *polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
         QString modelName = QString::fromStdString(polygenMesh->getModelName());
@@ -457,6 +465,7 @@ void MainWindow::updateTree()
         modelListItem->setCheckable(true);
         modelListItem->setCheckState(Qt::Checked);
         treeModel->appendRow(modelListItem);
+
     }
 	pGLK->refresh(true);
 }
@@ -505,77 +514,45 @@ void MainWindow::on_treeView_clicked(const QModelIndex &index)
     pGLK->refresh(true);
 }
 
-void MainWindow::runShapeUpDeformation() {
-
-	printf("RunShapeUpDeformation!\n");
-	PolygenMesh *polygenMesh = getSelectedPolygenMesh();
-	if (!polygenMesh)
-		polygenMesh = (PolygenMesh*)polygenMeshList.GetHead();
-	QMeshPatch *patch = (QMeshPatch*)polygenMesh->GetMeshList().GetHead();
-
-	Deformation = new DeformTet();
-	Deformation->SetMesh(patch);
-
-	Deformation->PreProcess();
-
-	//SORODeform->Run(100);
-	//pGLK->refresh(true);
-
-	deform_timer.start(1);
-	//QMessageBox::information(this, "title", "This is a test");
-	cout << "The end of this function" << endl;
-}
-
-void MainWindow::doTimerShapeUpDeform() 
+void MainWindow::viewAllWaypointLayers()
 {
-	static int itertime = 0;
-	static int total_iter = 70;
-	if (itertime % 10 == 0 && itertime < total_iter) MoveHandleRegion();
+	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
+		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
+		if ("Waypoints" != polygenMesh->getModelName() && "Slices" != polygenMesh->getModelName()) continue;
 
-	Deformation->Run(1);
-	itertime++;
+		for (GLKPOSITION posMesh = polygenMesh->GetMeshList().GetHeadPosition(); posMesh != nullptr;) {
+			QMeshPatch* Patch = (QMeshPatch*)polygenMesh->GetMeshList().GetNext(posMesh);
+			Patch->drawThisWaypointPatch = true;
 
-	if (itertime >= total_iter+20) {
-		Deformation->DoTopologyAnalysis(false);
-		deform_timer.stop();
-		pGLK->refresh(true);
-	}
-}
-
-void MainWindow::MoveHandleRegion() {
-	PolygenMesh *polygenMesh = getSelectedPolygenMesh();
-	if (!polygenMesh)
-		polygenMesh = (PolygenMesh*)polygenMeshList.GetHead();
-	QMeshPatch *patch = (QMeshPatch*)polygenMesh->GetMeshList().GetHead();
-
-	//Linearly move the handle region
-	for (GLKPOSITION Pos = patch->GetNodeList().GetHeadPosition(); Pos;) {
-		QMeshNode *node = (QMeshNode*)patch->GetNodeList().GetNext(Pos);
-		if (node->isHandle) {
-			double pp[3];
-			node->GetCoord3D(pp[0], pp[1], pp[2]);
-			pp[1] -= 0.2;
-			node->SetCoord3D(pp[0], pp[1], pp[2]);
+			Patch->drawSingularity = false;
+			/*if (ui->checkBox_showSingularityNode->isChecked()) {
+				Patch->drawSingularity = true;
+			}*/
 		}
 	}
+	pGLK->refresh(true);
 }
+/*This is bulit by Singa*/
 
 void MainWindow::tianGcode2ABB()
 {
-	fiveAxisPoint* initialpoint = new fiveAxisPoint();
+	fiveAxisPoint* initialPoint = new fiveAxisPoint();
 	bool Yup2Zup_switch = 1;
 	double Xoff = 0;
 	double Yoff = 0;
 	double Zoff = 0;
-
-	initialpoint->natSort(ui->lineEdit_PosNorFileDir->text(), wayPointFileCell);
-	initialpoint->readWayPointData(ui->lineEdit_PosNorFileDir->text(), Yup2Zup_switch,Xoff,Yoff,Zoff,&polygenMeshList,wayPointFileCell, pGLK);
+	/*First step is natsort the filedir like 100->101->200
+	  Then read them and display the Layer and Point in Mainview
+	  
+	  */
+	initialPoint->natSort(ui->lineEdit_PosNorFileDir->text(), wayPointFileCell);
+	initialPoint->readWayPointData(ui->lineEdit_PosNorFileDir->text(), Yup2Zup_switch,Xoff,Yoff,Zoff,&polygenMeshList,wayPointFileCell, pGLK);
 	updateTree();
 	viewAllWaypointLayers();
 	updateTree();
 	if (ui->checkBox_varyHeight->isChecked() == true) 
 	{
-		initialpoint->natSort((ui->lineEdit_OFFLayerFile->text()), sliceSetFileCell);
+		initialPoint->natSort((ui->lineEdit_OFFLayerFile->text()), sliceSetFileCell);
 		if (wayPointFileCell.size() != sliceSetFileCell.size()) 
 		{
 			cout << "Error: Layers file num != Waypoints file num" << endl;
@@ -583,16 +560,16 @@ void MainWindow::tianGcode2ABB()
 		}
 		else 
 		{
-			initialpoint->readSliceData(ui->lineEdit_OFFLayerFile->text(), Yup2Zup_switch, Xoff, Yoff, Zoff ,&polygenMeshList, sliceSetFileCell,pGLK);
+			initialPoint->readSliceData(ui->lineEdit_OFFLayerFile->text(), Yup2Zup_switch, Xoff, Yoff, Zoff ,&polygenMeshList, sliceSetFileCell,pGLK);
 			
 			updateTree();
 			viewAllWaypointLayers();
 		}
 	}
-	initialpoint->readExtruderHeadfile("extruderHead.obj", &polygenMeshList, pGLK);
+	initialPoint->readExtruderHeadfile("extruderHead.obj", &polygenMeshList, pGLK);
 	updateTree();
 	
-	initialpoint->readPlatformfile("printingPlatform.obj", &polygenMeshList, pGLK);
+	initialPoint->readPlatformfile("printingPlatform.obj", &polygenMeshList, pGLK);
 	updateTree();
 
 	std::cout << "Gcode Generation__ Running ..." << std::endl;
@@ -622,38 +599,16 @@ void MainWindow::tianGcode2ABB()
 		if ("ExtruderHead" == polygenMesh->getModelName()) { extruderHead = polygenMesh; }
 		if ("PrintPlatform" == polygenMesh->getModelName()) { PrintPlatform = polygenMesh; }
 	}
-	initialpoint->getLayerHeight(Slices, Waypoints, PrintPlatform, varyThickness_switch, GcodeGeneRange_From, GcodeGeneRange_To, false, UpZHeight, Xmove, Ymove);
-	initialpoint->singularityOpt(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To);
-	initialpoint->height2E(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To, varyThickness_switch);
-	initialpoint->writeGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
-	initialpoint->writeABBGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
+	initialPoint->getLayerHeight(Slices, Waypoints, PrintPlatform, varyThickness_switch, GcodeGeneRange_From, GcodeGeneRange_To, false, UpZHeight, Xmove, Ymove);
+	initialPoint->singularityOpt(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To);
+	initialPoint->height2E(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To, varyThickness_switch);
+	initialPoint->writeGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
+	initialPoint->writeABBGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
 	viewAllWaypointLayers();
 	pGLK->refresh(true);
-	delete initialpoint;
+	delete initialPoint;
 	
 }
-
-void MainWindow::viewAllWaypointLayers() 
-{
-	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
-		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
-		if ("Waypoints" != polygenMesh->getModelName() && "Slices" != polygenMesh->getModelName()) continue;
-
-		for (GLKPOSITION posMesh = polygenMesh->GetMeshList().GetHeadPosition(); posMesh != nullptr;) {
-			QMeshPatch* Patch = (QMeshPatch*)polygenMesh->GetMeshList().GetNext(posMesh);
-			Patch->drawThisWaypointPatch = true;
-
-			Patch->drawSingularity = false;
-			/*if (ui->checkBox_showSingularityNode->isChecked()) {
-				Patch->drawSingularity = true;
-			}*/
-		}
-	}
-	pGLK->refresh(true);
-}
-
-
-
 
 void MainWindow::selectDir()
 {
@@ -678,4 +633,62 @@ void MainWindow::selectDir()
 	dirName = strDirname1.substr(foundStart + 1);
 	ui->lineEdit_OFFLayerFile->setText(QString::fromStdString((dirName)));
 
+}
+
+void MainWindow::test_in_mainwindow()
+{
+	
+	PolygenMesh* waypointSet = new PolygenMesh;
+	waypointSet->setModelName("Waypoints");
+	waypointSet->meshType = WAYPOINT;
+	waypointSet->BuildGLList(waypointSet->m_bVertexNormalShading);
+	polygenMeshList.AddTail(waypointSet);
+	pGLK->AddDisplayObj(waypointSet, true);
+	//treeModel->appendRow(itemProject);
+	//delete waypointSet;
+	updateTree();
+	
+	PolygenMesh* waypointSet1 = new PolygenMesh;
+	waypointSet1->setModelName("Waypoints1");
+	waypointSet1->meshType = WAYPOINT;
+	waypointSet1->BuildGLList(waypointSet1->m_bVertexNormalShading);
+	polygenMeshList.AddTail(waypointSet1);
+	pGLK->AddDisplayObj(waypointSet1, true);
+	updateTree();
+
+	PolygenMesh* waypointSet2 = new PolygenMesh;
+	waypointSet2->setModelName("Waypoints2");
+	waypointSet2->meshType = WAYPOINT;
+	waypointSet2->BuildGLList(waypointSet2->m_bVertexNormalShading);
+	polygenMeshList.AddTail(waypointSet2);
+	pGLK->AddDisplayObj(waypointSet2, true);
+	updateTree();
+
+	//QStandardItem* itemProject = new QStandardItem(QStringLiteral("四川省"));
+	//treeModel->appendRow(itemProject);
+	//treeModel->setItem(0, 1, new QStandardItem(QStringLiteral("省份信息说明1"))); //父节点的兄弟节点
+	//QStandardItem* itemChild = new QStandardItem(QStringLiteral("成都市")); //子节点
+	//itemProject->appendRow(itemChild);
+	//itemChild = new QStandardItem(QStringLiteral("绵阳市"));
+	//itemProject->appendRow(itemChild);
+	//itemProject->setChild(0, 1, new QStandardItem(QStringLiteral("成都信息")));
+
+	//itemProject = new QStandardItem(QStringLiteral("广东省"));
+	//treeModel->appendRow(itemProject);
+	//treeModel->setItem(1, 1, new QStandardItem(QStringLiteral("省份信息说明2")));
+	//itemChild = new QStandardItem(QStringLiteral("深圳市"));
+
+	//QColor qc(Qt::red);
+	//itemChild->setCheckable(true);//出现方框可勾选
+
+	//itemProject->appendRow(itemChild);//子节点
+	//itemProject->setChild(0, 1, new QStandardItem(QStringLiteral("深圳信息1")));
+	//itemProject->setChild(0, 2, new QStandardItem(QStringLiteral("深圳信息2")));
+
+	//itemChild->parent()->child(0, 2)->setForeground(QBrush(qc));//字体颜色
+	//itemChild->parent()->child(0, 1)->setBackground(QBrush(qc));//背景颜色
+
+
+	
+	
 }
