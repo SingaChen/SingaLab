@@ -131,7 +131,7 @@ void MainWindow::createActions()
 	connect(ui->pushButton_RunDeformation, SIGNAL(released()), this, SLOT(runShapeUpDeformation()));
 	//connect(ui->pushButton_thicknessVariation, SIGNAL(released()), this, SLOT(LoadSlices()));
 	//connect(ui->pushButton_thicknessVariation, SIGNAL(released()), this, SLOT(extrude2ThicknessVariation()));	
-	//connect(ui->pushButton_RunDeformation, SIGNAL(released()), this, SLOT(runShapeUpDeformation()));
+	connect(ui->pushButton_selectWaypointFile, SIGNAL(released()), this, SLOT(selectDir()));
 	connect(ui->pushButton_GcodeGeneration, SIGNAL(released()), this, SLOT(runGcodeGeneration()));
 	connect(ui->pushButton_read, SIGNAL(released()), this, SLOT(tianGcode2ABB()));
 
@@ -650,4 +650,32 @@ void MainWindow::viewAllWaypointLayers()
 		}
 	}
 	pGLK->refresh(true);
+}
+
+
+
+
+void MainWindow::selectDir()
+{
+	QString dirStr = QFileDialog::getExistingDirectory(this, tr("PosNorFileDir"), "../1_GcodeGeneModel");
+	QByteArray dirnameArray = dirStr.toLatin1();
+	char* dirname = dirnameArray.data();
+	std::string strDirname(dirname);
+	std::size_t foundStart = strDirname.find_last_of("/");
+	std::size_t foundEnd = strDirname.find_last_of(".");
+	std::string dirName;
+	dirName = strDirname.substr(0, foundEnd);
+	dirName = strDirname.substr(foundStart + 1);
+	ui->lineEdit_PosNorFileDir->setText(QString::fromStdString((dirName)));
+
+	dirStr = QFileDialog::getExistingDirectory(this, tr("OFFLayerFile)"));
+	dirnameArray = dirStr.toLatin1();
+	dirname = dirnameArray.data();
+	string strDirname1(dirname);
+	foundStart = strDirname1.find_last_of("/");
+	foundEnd = strDirname1.find_last_of(".");
+	dirName = strDirname1.substr(0, foundEnd);
+	dirName = strDirname1.substr(foundStart + 1);
+	ui->lineEdit_OFFLayerFile->setText(QString::fromStdString((dirName)));
+
 }

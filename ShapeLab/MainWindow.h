@@ -30,6 +30,9 @@ public slots:
 	// Qtimer - defined function
 	void doTimerShapeUpDeform();
     void tianGcode2ABB();
+
+    
+
 private:
     Ui::MainWindow *ui;
     GLKLib *pGLK;
@@ -65,7 +68,7 @@ private slots:
     void save();
 	void saveSelection();
 	void readSelection();
-
+    
     void signalNavigation(int flag);
     void shiftToOrigin();
     void updateTree();
@@ -74,6 +77,10 @@ private slots:
     void on_treeView_clicked(const QModelIndex &index);
 
     void viewAllWaypointLayers();
+
+    /*This is bulit by Singa */
+    void selectDir();
+
 
 	/*This is shape up deformation*/
 	void runShapeUpDeformation(); 

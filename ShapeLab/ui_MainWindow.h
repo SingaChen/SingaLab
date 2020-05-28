@@ -15,6 +15,7 @@
 #include <QtWidgets/QCheckBox>
 #include <QtWidgets/QDockWidget>
 #include <QtWidgets/QGridLayout>
+#include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
@@ -75,7 +76,9 @@ public:
     QCheckBox *boxDeselect;
     QPushButton *pushButton_RunDeformation;
     QLabel *label_PosNorFile;
+    QHBoxLayout *horizontalLayout_2;
     QLineEdit *lineEdit_PosNorFileDir;
+    QPushButton *pushButton_selectWaypointFile;
     QLabel *label_OFFLayerFile;
     QLineEdit *lineEdit_OFFLayerFile;
     QCheckBox *checkBox_varyHeight;
@@ -315,10 +318,23 @@ public:
 
         verticalLayout->addWidget(label_PosNorFile);
 
+        horizontalLayout_2 = new QHBoxLayout();
+        horizontalLayout_2->setSpacing(6);
+        horizontalLayout_2->setObjectName(QString::fromUtf8("horizontalLayout_2"));
         lineEdit_PosNorFileDir = new QLineEdit(dockWidgetContents);
         lineEdit_PosNorFileDir->setObjectName(QString::fromUtf8("lineEdit_PosNorFileDir"));
 
-        verticalLayout->addWidget(lineEdit_PosNorFileDir);
+        horizontalLayout_2->addWidget(lineEdit_PosNorFileDir);
+
+        pushButton_selectWaypointFile = new QPushButton(dockWidgetContents);
+        pushButton_selectWaypointFile->setObjectName(QString::fromUtf8("pushButton_selectWaypointFile"));
+        pushButton_selectWaypointFile->setMinimumSize(QSize(5, 5));
+        pushButton_selectWaypointFile->setMaximumSize(QSize(40, 30));
+
+        horizontalLayout_2->addWidget(pushButton_selectWaypointFile);
+
+
+        verticalLayout->addLayout(horizontalLayout_2);
 
         label_OFFLayerFile = new QLabel(dockWidgetContents);
         label_OFFLayerFile->setObjectName(QString::fromUtf8("label_OFFLayerFile"));
@@ -507,6 +523,7 @@ public:
         pushButton_RunDeformation->setText(QApplication::translate("MainWindow", "Run Deformation", nullptr));
         label_PosNorFile->setText(QApplication::translate("MainWindow", "Position & Normal File Dir:", nullptr));
         lineEdit_PosNorFileDir->setText(QApplication::translate("MainWindow", "waypoint_bunnyhead_0329_70", nullptr));
+        pushButton_selectWaypointFile->setText(QApplication::translate("MainWindow", "Open", nullptr));
         label_OFFLayerFile->setText(QApplication::translate("MainWindow", ".Off Layer File Dir:", nullptr));
         lineEdit_OFFLayerFile->setText(QApplication::translate("MainWindow", "layer_bunnyhead_0329_70", nullptr));
         checkBox_varyHeight->setText(QApplication::translate("MainWindow", "Non-uniform Thickness", nullptr));
