@@ -81,7 +81,7 @@ public:
 	bool drawThisWaypointPatch = false;
 	bool drawSingularity = false;
 	std::string waypointPatchName = "";
-	std::string layerPatchName = "";
+	std::string layerPatchName = "1022";
 
 private:
 	int indexno;			// start from 1 to n  
