@@ -44,8 +44,7 @@ private:
     void createActions();
     void createTreeView();
 	void QTgetscreenshoot();
-
-    PolygenMesh *getSelectedPolygenMesh();
+    PolygenMesh* getSelectedPolygenMesh();
 
     QSignalMapper *signalMapper;
     QStandardItemModel *treeModel;
@@ -73,6 +72,7 @@ private slots:
 	void mouseMoveEvent(QMouseEvent *event);
     void on_pushButton_clearAll_clicked();
     void on_treeView_clicked(const QModelIndex &index);
+    int treeViewSelectType();
 
     void viewAllWaypointLayers();
 

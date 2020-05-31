@@ -1695,6 +1695,14 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 	int iTemperature = 200;						// The temperature of Extruder Initial
 	int sTemperature = 200;						// The temperature of Extruder Support
 
+
+	int V_Print = 20;                           //Speed of end-effector while printing
+	double deltaDistance;
+	double deltaE;
+	double F_Print;
+
+
+
 	int F_G0_XYBC = 1000;						// Speed of G0 move of XYBC
 	int F_G0_Z = 1000;							// Speed of G0 move of Z
 	int F_G1_support = 150;					// Speed of G1 support material (normal 2ed~layers)
@@ -1708,9 +1716,19 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 	double E_PumpCompensateL1 = 15;				// The extruder pump compensate for 1st layer Xmm
 	double E_PumpCompensateNewE = 12;			// The extruder pump compensate for new type layer Xmm
 
+	Eigen::Matrix3f R1; R1 << 0, -1, 0, 1, 0, 0, 0, 0, 1;
+	Eigen::Matrix3f RX0; RX0 << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+	Eigen::Matrix3f RY0; RY0 << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+	Eigen::Matrix3f RZ0; RZ0 << -1, 0, 0, 0, -1, 0, 0, 0, 1;
+	Eigen::Matrix3f RX1; RX1 << 1, 0, 0, 0, cos(0.073), -sin(DEGREE_TO_ROTATE(0.073)), 0, sin(DEGREE_TO_ROTATE(0.073)), cos(DEGREE_TO_ROTATE(0.073));
+	Eigen::Matrix3f RY1; RY1 << cos(DEGREE_TO_ROTATE(-0.1)), 0, sin(DEGREE_TO_ROTATE(0.1)), 0, 1, 0, -sin(DEGREE_TO_ROTATE(0.1)), 0, cos(DEGREE_TO_ROTATE(0.1));
+	Eigen::Matrix3f RZ1; RZ1 << cos(DEGREE_TO_ROTATE(89.87)), -sin(DEGREE_TO_ROTATE(89.87)), 0, sin(DEGREE_TO_ROTATE(89.87)), cos(DEGREE_TO_ROTATE(89.87)), 0, 0, 0, 1;
+	Eigen::Vector3f T1; T1 << 1459.306, -26.9, 2.591 + 2.07;
+
+
 	// important parameter for extruder 3
-	double xExtuderOffset = E3_xOff;
-	double yExtuderOffset = E3_yOff;
+	/*double xExtuderOffset = E3_xOff;
+	double yExtuderOffset = E3_yOff;*/
 
 	char targetFilename[1024];
 	std::sprintf(targetFilename, "%s%s", "../4_ABBGcode/", rltDir.c_str());
@@ -1731,7 +1749,7 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 		double Pz = Node->m_XYZBCE[2];
 		if (Pz > Z_max) { Z_max = Pz; }
 	}
-	// Record the layer type of 1st Layer
+	// Record the layer type of last Layer
 	bool IsSupportLayer_last = layer1st_WayPointPatch->isSupportLayer;
 
 	// Give the start message of G_code
@@ -1749,31 +1767,68 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 		QMeshPatch* WayPointPatch = (QMeshPatch*)polygenMesh_Waypoints->GetMeshList().GetNext(Pos);
 
 		if (WayPointPatch->GetIndexNo() < GcodeGeneRange_From || WayPointPatch->GetIndexNo() > GcodeGeneRange_To) continue;
+		
 
-		for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition(); Pos;) {
+		for (GLKPOSITION Pos = WayPointPatch->GetNodeList().GetHeadPosition() ; Pos;) {
+			GLKPOSITION PosPrev = Pos;
 			QMeshNode* Node = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(Pos);
 			double X = Node->m_XYZBCE[0]; double Y = Node->m_XYZBCE[1]; double Z = Node->m_XYZBCE[2];
 			double B = Node->m_XYZBCE[3]; double C = Node->m_XYZBCE[4]; double E = Node->m_XYZBCE[5];
-			
+			//Node->GetIndexNo;
 			//translate from CNC to ABB for IRB4600
 			X = X - 100 * sin(DEGREE_TO_ROTATE(B)); Z = Z + 100 * (1 - cos(DEGREE_TO_ROTATE(B)));
 			Eigen::Vector3f P1; P1 << X, Y, Z;
-			Eigen::Matrix3f R1; R1 << 0, -1, 0, 1, 0, 0, 0, 0, 1;
+			//Eigen::Matrix3f R1; R1 << 0, -1, 0, 1, 0, 0, 0, 0, 1;
 			Eigen::Vector3f P01; P01 = R1 * P1;
-			Eigen::Matrix3f RX0; RX0 << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+			/*Eigen::Matrix3f RX0; RX0 << 1, 0, 0, 0, 1, 0, 0, 0, 1;
 			Eigen::Matrix3f RY0; RY0 << 1, 0, 0, 0, 1, 0, 0, 0, 1;
-			Eigen::Matrix3f RZ0; RZ0 << -1, 0, 0, 0, -1, 0, 0, 0, 1;
+			Eigen::Matrix3f RZ0; RZ0 << -1, 0, 0, 0, -1, 0, 0, 0, 1;*/
 			Eigen::Vector3f P02; P02=RZ0*RY0*RX0*P01;
 			P02[2] = P02[2] + 920;
-			Eigen::Matrix3f RX1; RX1 << 1, 0, 0, 0, cos(0.073), -sin(DEGREE_TO_ROTATE(0.073)), 0, sin(DEGREE_TO_ROTATE(0.073)), cos(DEGREE_TO_ROTATE(0.073));
+			/*Eigen::Matrix3f RX1; RX1 << 1, 0, 0, 0, cos(0.073), -sin(DEGREE_TO_ROTATE(0.073)), 0, sin(DEGREE_TO_ROTATE(0.073)), cos(DEGREE_TO_ROTATE(0.073));
 			Eigen::Matrix3f RY1; RY1 << cos(DEGREE_TO_ROTATE(-0.1)), 0, sin(DEGREE_TO_ROTATE(0.1)), 0, 1, 0, -sin(DEGREE_TO_ROTATE(0.1)), 0, cos(DEGREE_TO_ROTATE(0.1));
 			Eigen::Matrix3f RZ1; RZ1 << cos(DEGREE_TO_ROTATE(89.87)), -sin(DEGREE_TO_ROTATE(89.87)), 0, sin(DEGREE_TO_ROTATE(89.87)), cos(DEGREE_TO_ROTATE(89.87)), 0, 0, 0, 1;
-			Eigen::Vector3f T1; T1 << 1459.306, -26.9, 2.591 + 2.07;
+			Eigen::Vector3f T1; T1 << 1459.306, -26.9, 2.591 + 2.07;*/
 			P02 = RX1 * RY1 * RZ1 * P02 + T1;
 			X = P02[0]; Y = P02[1]; Z = P02[2];
+			B = -B;
+			if(PosPrev != WayPointPatch->GetNodeList().GetHeadPosition())
+			{
+				QMeshNode* NodePrev = (QMeshNode*)WayPointPatch->GetNodeList().GetNext(PosPrev->prev);
+				double XPrev = NodePrev->m_XYZBCE[0]; double YPrev = NodePrev->m_XYZBCE[1]; double ZPrev = NodePrev->m_XYZBCE[2];
+				double BPrev = NodePrev->m_XYZBCE[3]; double CPrev = NodePrev->m_XYZBCE[4]; double EPrev = NodePrev->m_XYZBCE[5];
+
+				//translate from CNC to ABB for IRB4600
+				XPrev = XPrev - 100 * sin(DEGREE_TO_ROTATE(BPrev)); ZPrev = ZPrev + 100 * (1 - cos(DEGREE_TO_ROTATE(BPrev)));
+				Eigen::Vector3f P1Prev; P1Prev << XPrev, YPrev, ZPrev;
+				//Eigen::Matrix3f R1; R1 << 0, -1, 0, 1, 0, 0, 0, 0, 1;
+				Eigen::Vector3f P01Prev; P01Prev = R1 * P1Prev;
+				/*Eigen::Matrix3f RX0; RX0 << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+				Eigen::Matrix3f RY0; RY0 << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+				Eigen::Matrix3f RZ0; RZ0 << -1, 0, 0, 0, -1, 0, 0, 0, 1;*/
+				Eigen::Vector3f P02Prev; P02Prev = RZ0 * RY0 * RX0 * P01Prev;
+				P02Prev[2] = P02Prev[2] + 920;
+				/*Eigen::Matrix3f RX1; RX1 << 1, 0, 0, 0, cos(0.073), -sin(DEGREE_TO_ROTATE(0.073)), 0, sin(DEGREE_TO_ROTATE(0.073)), cos(DEGREE_TO_ROTATE(0.073));
+				Eigen::Matrix3f RY1; RY1 << cos(DEGREE_TO_ROTATE(-0.1)), 0, sin(DEGREE_TO_ROTATE(0.1)), 0, 1, 0, -sin(DEGREE_TO_ROTATE(0.1)), 0, cos(DEGREE_TO_ROTATE(0.1));
+				Eigen::Matrix3f RZ1; RZ1 << cos(DEGREE_TO_ROTATE(89.87)), -sin(DEGREE_TO_ROTATE(89.87)), 0, sin(DEGREE_TO_ROTATE(89.87)), cos(DEGREE_TO_ROTATE(89.87)), 0, 0, 0, 1;
+				Eigen::Vector3f T1; T1 << 1459.306, -26.9, 2.591 + 2.07;*/
+				P02Prev = RX1 * RY1 * RZ1 * P02Prev + T1;
+				XPrev = P02Prev[0]; YPrev = P02Prev[1]; ZPrev = P02Prev[2];
+
+
+				deltaDistance = sqrt(pow((XPrev - X), 2) + pow((YPrev - Y), 2) + pow((ZPrev - Z), 2));
+				deltaE = EPrev - E;
+				F_Print = abs(V_Print * deltaE * 60 / deltaDistance);
+			
+			}
+			else
+			{
+				F_Print = 150; 
+			}
+
 
 			// check the large change of C angle
-			if (Node->GetIndexNo() != 0)
+			/*if (Node->GetIndexNo() != 0)
 			{
 				GLKPOSITION prevPos = WayPointPatch->GetNodeList().Find(Node)->prev;
 				QMeshNode* prevNode = (QMeshNode*)WayPointPatch->GetNodeList().GetAt(prevPos);
@@ -1791,17 +1846,17 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 					cout << "WayPointPatch->GetIndexNo() " << WayPointPatch->GetIndexNo() << endl;
 				}
 
-			}
+			}*/
 			// check the negative Z motion
 			//if (Z < 0.0) { cout << "Z sitll < 0.0" << endl; }
 			// increase the extrusion of first layer
 			if (WayPointPatch->GetIndexNo() == GcodeGeneRange_From) { E = E * 1.1; }//?
 
 			//modify the xy-offset according to the extruder
-			if (WayPointPatch->isSupportLayer == true) {
+			/*if (WayPointPatch->isSupportLayer == true) {
 				X = X + xExtuderOffset;
 				Y = Y + yExtuderOffset;
-			}
+			}*/
 			// Record the max Z for security consideration (rest layers)
 
 			//this part should be calculated in workspace and turn back to the world space again.
@@ -1819,7 +1874,7 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 					std::fprintf(fp, "G92 E0 \n");
 					std::fprintf(fp, "G1 F%d E%.3f \n", F_PumpCompensate, E_PumpCompensateL1);
 					std::fprintf(fp, "G92 E0 \n");
-					std::fprintf(fp, "G1 F%d \n", F_G1_1stlayer);
+					//std::fprintf(fp, "G1 F%d \n", F_G1_1stlayer);
 				}
 				else if (WayPointPatch->isSupportLayer == IsSupportLayer_last) {
 					std::fprintf(fp, "G92 E0 \n");
@@ -1835,12 +1890,12 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 					if (WayPointPatch->isSupportLayer == true) {
 						std::fprintf(fp, "G1 F%d E%.3f \n", F_PumpCompensate, E_PumpCompensate * 1.2);
 						std::fprintf(fp, "G92 E0 \n");
-						std::fprintf(fp, "G1 F%d \n", F_G1_support);
+						//std::fprintf(fp, "G1 F%d \n", F_G1_support);
 					}
 					else {
 						std::fprintf(fp, "G1 F%d E%.3f \n", F_PumpCompensate, E_PumpCompensate);
 						std::fprintf(fp, "G92 E0 \n");
-						std::fprintf(fp, "G1 F%d \n", F_G1_original);
+						//std::fprintf(fp, "G1 F%d \n", F_G1_original);
 					}
 
 				}
@@ -1877,7 +1932,7 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 						//std::fprintf(fp, "G1 F%d\n", F_G1_original);
 					}
 				}
-				std::fprintf(fp, "G1 X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f \n", X, Y, Z, B, C, E);
+				std::fprintf(fp, "G1 F%.3f X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f \n", F_Print, X, Y, Z, B, C, E);
 			}
 			else {
 				// Consider the waypoints with too large Length OR large Singularity areas
@@ -1899,7 +1954,8 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 						std::fprintf(fp, "G0 F%d X%.3f Y%.3f B%.3f C%.3f \n", F_G0_XYBC, X, Y, B, C);
 						std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, (Z + Z_compensateUpDistance));
 						std::fprintf(fp, "G0 F%d E%.3f \n", F_PumpCompensate, E);
-						std::fprintf(fp, "G0 F%d Z%.3f E%.3f \n", F_G1_support, Z, E);
+						//std::fprintf(fp, "G0 F%d Z%.3f E%.3f \n", F_G1_support, Z, E);
+						std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, Z);
 					}
 					else {
 						//std::fprintf(fp, "G0 E%.3f F%d\n", (odlE + E_PumpBack * 0.8), F_PumpBack);
@@ -1910,13 +1966,14 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 						std::fprintf(fp, "G0 F%d X%.3f Y%.3f B%.3f C%.3f \n", F_G0_XYBC, X, Y, B, C);
 						std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, (Z + Z_compensateUpDistance));
 						std::fprintf(fp, "G0 F%d E%.3f \n", F_PumpCompensate, E);
-						std::fprintf(fp, "G0 F%d Z%.3f E%.3f \n", F_G1_support, Z, E);
+						//std::fprintf(fp, "G0 F%d Z%.3f E%.3f \n", F_G1_support, Z, E);
+						std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, Z);
 					}
 
 					//std::cout << "oldE = " << odlE << std::endl;
 
 				}
-				std::fprintf(fp, "G1 X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f \n", X, Y, Z, B, C, E);
+				std::fprintf(fp, "G1 F%.3f X%.3f Y%.3f Z%.3f B%.3f C%.3f E%.3f \n", F_Print, X, Y, Z, B, C, E);
 			}
 			//std::cout << E << std::endl;
 		}
@@ -1927,7 +1984,7 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 	std::fprintf(fp, "G92 E0 \n");
 	std::fprintf(fp, "G0 F%d E%.3f \n", F_G0_XYBC, E_PumpBack); // PumpBack
 	std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, 1200); // return to the home point Z_home
-	std::fprintf(fp, "G0 F%d X0 Y0 B0 C0 \n", F_G0_XYBC);
+	//std::fprintf(fp, "G0 F%d X0 Y0 B0 C0 \n", F_G0_XYBC);
 	//std::fprintf(fp, "M30\n");// Stop all of the motion
 
 	std::fclose(fp);

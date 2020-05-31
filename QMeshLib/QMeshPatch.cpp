@@ -26,6 +26,7 @@ QMeshPatch::QMeshPatch()
 	m_materialNegativeDir = 1;	m_materialPositiveDir = 0;
 
 	int num = faceList.GetCount();
+
 }
 
 QMeshPatch::~QMeshPatch()

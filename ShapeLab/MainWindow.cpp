@@ -461,34 +461,38 @@ void MainWindow::updateTree()
     for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos!=nullptr;){
         PolygenMesh *polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
         QString modelName = QString::fromStdString(polygenMesh->getModelName());
+		
         QStandardItem *modelListItem = new QStandardItem(modelName);
+		modelListItem->setData(QStringLiteral("POLYGENMESH"));
+		
         modelListItem->setCheckable(true);
+		//modelListItem->setTristate(true);
         modelListItem->setCheckState(Qt::Checked);
 		treeModel->appendRow(modelListItem);
+		//modelListItem->modelType = POLYGENMESH;
 		treeModel->setItem(i++, 1, new QStandardItem(QStringLiteral("polygenMesh"))); //父节点的兄弟节点
-		//modelListItem->text="123132";
 		int j = 0;
 		for (GLKPOSITION posChild = polygenMesh->GetMeshList().GetHeadPosition(); posChild;) 
 		{
 			QMeshPatch *qMeshPatch = (QMeshPatch*) polygenMesh->GetMeshList().GetNext(posChild);
 			QString modelNameChild = QString::fromStdString(qMeshPatch->waypointPatchName);
 			QStandardItem* modelListItemChild = new QStandardItem(modelNameChild);
+			modelListItemChild->setData(QStringLiteral("QMESHPACTH"));
 			modelListItemChild->setCheckable(true);
 			modelListItemChild->setCheckState(Qt::Checked);
 			modelListItem->appendRow(modelListItemChild);
 			modelListItem->setChild(j++, 1, new QStandardItem(QStringLiteral("QMeshPatch")));
-			
 		}
-		
     }
 	pGLK->refresh(true);
 }
 
 PolygenMesh *MainWindow::getSelectedPolygenMesh()
 {
-    if (!treeModel->hasChildren())
-        return nullptr;
+    /*if (!treeModel->hasChildren())
+        return nullptr;*/
     QModelIndex index = ui->treeView->currentIndex();
+	QStandardItem* selectedModel = treeModel->itemFromIndex(index);
     QString selectedModelName = index.data(Qt::DisplayRole).toString();
     for (GLKPOSITION pos=polygenMeshList.GetHeadPosition(); pos!=nullptr;){
         PolygenMesh *polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
@@ -497,6 +501,16 @@ PolygenMesh *MainWindow::getSelectedPolygenMesh()
             return polygenMesh;
     }
     return nullptr;
+}
+
+int MainWindow::treeViewSelectType()
+{
+	QModelIndex index = ui->treeView->currentIndex();
+	QStandardItem* selectedModel = treeModel->itemFromIndex(index);
+	string selectedModelType = selectedModel->data().toString().toStdString();
+	if (selectedModelType == "POLYGENMESH") return 1;
+	else if (selectedModelType == "QMESHPATCH") return 2;
+	else return 0;
 }
 
 void MainWindow::on_pushButton_clearAll_clicked()
@@ -520,22 +534,46 @@ void MainWindow::on_treeView_clicked(const QModelIndex &index)
     ui->treeView->currentIndex();
     QStandardItem *modelListItem = treeModel->itemFromIndex(index);
 	ui->treeView->setCurrentIndex(index);
+	QString selectedModelName = index.data(Qt::DisplayRole).toString();
+	switch (treeViewSelectType())
+	{
+	case 1:
+		for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) 
+		{
+			PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
+			QString modelName = QString::fromStdString(polygenMesh->getModelName());
+			if (QString::compare(selectedModelName, modelName) == 0)
+			{
+				if (modelListItem->checkState() == Qt::Checked)
+					polygenMesh->bShow = true;
+				else
+					polygenMesh->bShow = false;
+			}
+		};
+		break;
+	case 2:
+		for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
+			PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
+			for (GLKPOSITION posChild = polygenMesh->GetMeshList().GetHeadPosition(); posChild;)
+			{
+				QMeshPatch* qMeshPatch = (QMeshPatch*)polygenMesh->GetMeshList().GetNext(posChild);
+				QString modelNameChild = QString::fromStdString(qMeshPatch->waypointPatchName);
+				if (QString::compare(selectedModelName, modelNameChild) == 0)
+				{
+					if (modelListItem->checkState() == Qt::Checked)
+						;//polygenMesh->bShow = true;
+					else
+						;//polygenMesh->bShow = false;
+				}
+			}
+		}
+		break;
+	default:
+		break;
+
+	}
 	
-	/*QString name = "000";
-	QModelIndex index1 = ui->treeView->currentIndex();
-	QStandardItem* modelListItem2 = treeModel->itemFromIndex(index1);
-	name = modelListItem2->data(Qt::DisplayRole).toString();
-	cout << name.toStdString() << endl;*/
-	/*name = index1.data(Qt::DisplayRole).toString();*/
-	//cout << name.toStdString() << endl;
-
-
-
-    PolygenMesh *polygenMesh = getSelectedPolygenMesh();
-    if (modelListItem->checkState() == Qt::Checked)
-        polygenMesh->bShow = true;
-    else
-        polygenMesh->bShow = false;
+    
     pGLK->refresh(true);
 }
 
@@ -557,7 +595,7 @@ void MainWindow::viewAllWaypointLayers()
 	}
 	pGLK->refresh(true);
 }
-/*This is bulit by Singa*/
+/*This is built by Singa*/
 
 void MainWindow::tianGcode2ABB()
 {
@@ -627,7 +665,7 @@ void MainWindow::tianGcode2ABB()
 	initialPoint->getLayerHeight(Slices, Waypoints, PrintPlatform, varyThickness_switch, GcodeGeneRange_From, GcodeGeneRange_To, false, UpZHeight, Xmove, Ymove);
 	initialPoint->singularityOpt(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To);
 	initialPoint->height2E(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To, varyThickness_switch);
-	initialPoint->writeGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
+	//initialPoint->writeGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
 	initialPoint->writeABBGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
 	viewAllWaypointLayers();
 	pGLK->refresh(true);
