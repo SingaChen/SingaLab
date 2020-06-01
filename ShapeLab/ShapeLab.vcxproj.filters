@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Form Files">
@@ -64,37 +64,27 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="MainWindow.h">
+    <QtMoc Include="MainWindow.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="debug\moc_MainWindow.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_MainWindow.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
+    
+    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
-    <ClCompile Include="debug\qrc_ShapeLab.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\qrc_ShapeLab.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClInclude Include="ui_MainWindow.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="MainWindow.ui">
+    <QtUic Include="MainWindow.ui">
       <Filter>Form Files</Filter>
-    </CustomBuild>
+    </QtUic>
   </ItemGroup>
   <ItemGroup>
     <None Include="All.png">
@@ -157,9 +147,9 @@
     <None Include="resource\Shade.png">
       <Filter>Resource Files</Filter>
     </None>
-    <CustomBuild Include="ShapeLab.qrc">
+    <QtRcc Include="ShapeLab.qrc">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
+    </QtRcc>
     <None Include="resource\Top">
       <Filter>Resource Files</Filter>
     </None>
