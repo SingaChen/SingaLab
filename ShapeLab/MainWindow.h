@@ -9,6 +9,8 @@
 #include <omp.h>
 #include <QTimer>
 #include <QLabel>
+#include <QtCharts>
+QT_CHARTS_USE_NAMESPACE
 
 
 using namespace std;

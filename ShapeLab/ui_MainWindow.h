@@ -6,6 +6,7 @@
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
 
+
 #ifndef UI_MAINWINDOW_H
 #define UI_MAINWINDOW_H
 
@@ -30,6 +31,8 @@
 #include <QtWidgets/QTreeView>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
+#include <qchartview.h>
+
 
 QT_BEGIN_NAMESPACE
 
@@ -546,6 +549,8 @@ public:
         lineEdit_targetFileName->setObjectName(QString::fromUtf8("lineEdit_targetFileName"));
 
         verticalLayout->addWidget(lineEdit_targetFileName);
+
+
 
         pushButton_test = new QPushButton(dockWidgetContents);
         pushButton_test->setObjectName(QString::fromUtf8("pushButton_test"));
