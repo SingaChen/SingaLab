@@ -29,6 +29,7 @@ public:
 	int GetIndexNo();		//from 1 to n
 	void SetIndexNo(const int _index = 1);
 
+
 	bool drawDeformationField = false;
 	double deformDrawValue[2] = { 0 };
 

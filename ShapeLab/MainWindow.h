@@ -10,6 +10,7 @@
 #include <QTimer>
 #include <QLabel>
 
+
 using namespace std;
 
 class DeformTet;
@@ -72,6 +73,7 @@ private slots:
 	void mouseMoveEvent(QMouseEvent *event);
     void on_pushButton_clearAll_clicked();
     void on_treeView_clicked(const QModelIndex &index);
+    void QMeshPatchRangeActive();
     int treeViewSelectType();
 
     void viewAllWaypointLayers();

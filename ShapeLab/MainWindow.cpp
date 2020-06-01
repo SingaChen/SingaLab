@@ -127,11 +127,16 @@ void MainWindow::createActions()
 
     connect (signalMapper, SIGNAL(mapped(int)), this, SLOT(signalNavigation(int)));
 
+	ui->label_RangeFrom->setDigitCount(3);
+	ui->label_RangeTo->setDigitCount(3);
+	
+	connect(ui->horizontalSlider_RangeFrom, SIGNAL(valueChanged(int)), ui->label_RangeFrom, SLOT(display(int)));
+	connect(ui->horizontalSlider_RangeTo, SIGNAL(valueChanged(int)), ui->label_RangeTo, SLOT(display(int)));
 	//Button
 	connect(ui->pushButton_selectWaypointFile, SIGNAL(released()), this, SLOT(selectDir()));
 	connect(ui->pushButton_read, SIGNAL(released()), this, SLOT(tianGcode2ABB()));
 	connect(ui->pushButton_test, SIGNAL(released()), this, SLOT(test_in_mainwindow()));
-
+	connect(ui->pushButton_rangeActive, SIGNAL(released()), this, SLOT(QMeshPatchRangeActive()));
 	
 }
 
@@ -457,6 +462,10 @@ void MainWindow::updateTree()
 	fonts << "ModelName" << "ModelType" << "NodelNum" << "FaceNum";
 	treeModel->setHorizontalHeaderLabels(fonts);
 	ui->treeView->setModel(treeModel);
+
+	
+
+
 	int i = 0;
     for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos!=nullptr;){
         PolygenMesh *polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
@@ -475,8 +484,10 @@ void MainWindow::updateTree()
 		for (GLKPOSITION posChild = polygenMesh->GetMeshList().GetHeadPosition(); posChild;) 
 		{
 			QMeshPatch *qMeshPatch = (QMeshPatch*) polygenMesh->GetMeshList().GetNext(posChild);
+			
 			QString modelNameChild = QString::fromStdString(qMeshPatch->waypointPatchName);
 			QStandardItem* modelListItemChild = new QStandardItem(modelNameChild);
+			
 			modelListItemChild->setData(QStringLiteral("QMESHPACTH"));
 			modelListItemChild->setCheckable(true);
 			modelListItemChild->setCheckState(Qt::Checked);
@@ -531,7 +542,7 @@ void MainWindow::on_pushButton_clearAll_clicked()
 
 void MainWindow::on_treeView_clicked(const QModelIndex &index)
 {
-    ui->treeView->currentIndex();
+    //ui->treeView->currentIndex();
     QStandardItem *modelListItem = treeModel->itemFromIndex(index);
 	ui->treeView->setCurrentIndex(index);
 	QString selectedModelName = index.data(Qt::DisplayRole).toString();
@@ -545,10 +556,31 @@ void MainWindow::on_treeView_clicked(const QModelIndex &index)
 			if (QString::compare(selectedModelName, modelName) == 0)
 			{
 				if (modelListItem->checkState() == Qt::Checked)
+				{
+					for (int i = 0; i < polygenMesh->GetMeshList().GetCount(); i++)
+						modelListItem->child(i)->setCheckState(Qt::Unchecked);
+					//need notshow
 					polygenMesh->bShow = true;
+				}
 				else
+				{
+					for (int i = 0; i < polygenMesh->GetMeshList().GetCount(); i++)
+						modelListItem->child(i)->setCheckState(Qt::Unchecked);
+					//need show
 					polygenMesh->bShow = false;
+				}
+				ui->horizontalSlider_RangeFrom->setMaximum(polygenMesh->GetMeshList().GetCount());
+				ui->horizontalSlider_RangeFrom->setMinimum(1);
+				ui->horizontalSlider_RangeFrom->setValue(1);
+				ui->horizontalSlider_RangeFrom->setSingleStep(1);
+				ui->label_RangeFrom->display(1);
+				ui->horizontalSlider_RangeTo->setMaximum(polygenMesh->GetMeshList().GetCount());
+				ui->horizontalSlider_RangeTo->setMinimum(1);
+				ui->horizontalSlider_RangeTo->setValue(polygenMesh->GetMeshList().GetCount());
+				ui->horizontalSlider_RangeTo->setSingleStep(1);
+				ui->label_RangeTo->display(((polygenMesh->GetMeshList().GetCount())));
 			}
+
 		};
 		break;
 	case 2:
@@ -560,10 +592,8 @@ void MainWindow::on_treeView_clicked(const QModelIndex &index)
 				QString modelNameChild = QString::fromStdString(qMeshPatch->waypointPatchName);
 				if (QString::compare(selectedModelName, modelNameChild) == 0)
 				{
-					if (modelListItem->checkState() == Qt::Checked)
-						;//polygenMesh->bShow = true;
-					else
-						;//polygenMesh->bShow = false;
+					//QStandardItem* selectedModel = treeModel->itemFromIndex(qMeshPatch->index.);
+					
 				}
 			}
 		}
@@ -698,19 +728,87 @@ void MainWindow::selectDir()
 
 }
 
+void MainWindow::QMeshPatchRangeActive()
+{
+	QModelIndex index = ui->treeView->currentIndex();
+	QStandardItem* selectedModel = treeModel->itemFromIndex(index);
+	string selectedModelType = selectedModel->data().toString().toStdString();
+	if (selectedModelType == "POLYGENMESH")
+	{
+		int rangeFromIndex = ui->label_RangeFrom->value() - 1;
+		int rangeToIndex = ui->label_RangeTo->value() -1;
+		
+		for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;) {
+			PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
+			QString modelName = QString::fromStdString(polygenMesh->getModelName());
+			QString selectedModelName = index.data(Qt::DisplayRole).toString();
+			if (QString::compare(selectedModelName, modelName) == 0)
+			{
+				selectedModel->setCheckState(Qt::Unchecked);
+				polygenMesh->bShow = false;
+				int i = 0;
+				for (GLKPOSITION posChild = polygenMesh->GetMeshList().GetHeadPosition(); posChild;)
+				{
+					QMeshPatch* qMeshPatch = (QMeshPatch*)polygenMesh->GetMeshList().GetNext(posChild);
+					if (i<= rangeToIndex &&i>= rangeFromIndex)
+					{
+						selectedModel->child(i)->setCheckState(Qt::Checked);
+						//need notshow
+					}
+					else
+					{
+						selectedModel->child(i)->setCheckState(Qt::Unchecked);
+						//need notshow
+					}
+					i++;
+				}
+			}
+		}
+	}
+	
+}
 void MainWindow::test_in_mainwindow()
 {
-	
-	PolygenMesh* waypointSet = new PolygenMesh;
-	waypointSet->setModelName("Waypoints");
-	waypointSet->meshType = WAYPOINT;
-	waypointSet->BuildGLList(waypointSet->m_bVertexNormalShading);
-	polygenMeshList.AddTail(waypointSet);
-	pGLK->AddDisplayObj(waypointSet, true);
-	//treeModel->appendRow(itemProject);
-	//delete waypointSet;
-	updateTree();
-	
+	QChart* chart = new QChart();
+
+	// 构建折线系列对象
+	QLineSeries* series = new QLineSeries();
+	for (quint32 i = 0; i < 100; i++)
+	{
+		// 参数 x 为循环自增变量 i，参数 y 为正弦函数Y值
+		series->append(i, sin(static_cast<double>(0.6f * i)));
+	}
+
+	// 将系列添加到图表
+	chart->addSeries(series);
+	// 基于已添加到图表的 series 来创建默认的坐标轴
+	chart->createDefaultAxes();
+
+	// 将图表绑定到视图
+	ui->widget->setChart(chart);
+
+
+
+
+	//PolygenMesh* waypointSet = new PolygenMesh;
+	//waypointSet->setModelName("Waypoints");
+	//waypointSet->meshType = WAYPOINT;
+	//waypointSet->BuildGLList(waypointSet->m_bVertexNormalShading);
+	//polygenMeshList.AddTail(waypointSet);
+	//pGLK->AddDisplayObj(waypointSet, true);
+	//PolygenMesh* waypointSet1 = new PolygenMesh;
+	//waypointSet1->setModelName("Waypoints1");
+	//waypointSet1->meshType = WAYPOINT;
+	//waypointSet1->BuildGLList(waypointSet1->m_bVertexNormalShading);
+	//polygenMeshList.AddTail(waypointSet1);
+	//pGLK->AddDisplayObj(waypointSet1, true);
+
+
+
+	////treeModel->appendRow(itemProject);
+	////delete waypointSet;
+	//updateTree();
+
 	/*PolygenMesh* waypointSet1 = new PolygenMesh;
 	waypointSet1->setModelName("Waypoints1");
 	waypointSet1->meshType = WAYPOINT;
@@ -752,6 +850,6 @@ void MainWindow::test_in_mainwindow()
 	//itemChild->parent()->child(0, 1)->setBackground(QBrush(qc));//背景颜色
 
 
-	
-	
+
+
 }

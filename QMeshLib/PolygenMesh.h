@@ -28,6 +28,7 @@ public:
 
     mesh_type meshType;
 
+
     void ImportOBJFile(char *filename, std::string modelName);
 	void ImportTETFile(char *filename, std::string modelName);
 
