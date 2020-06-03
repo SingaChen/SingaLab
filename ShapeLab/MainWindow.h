@@ -82,7 +82,7 @@ private slots:
     /*This is bulit by Singa */
     void selectDir();
     void test_in_mainwindow();
-    void _drawWaypointData(GLKObList* polygenMeshList);
+    void chartWindow();
 
 	/*This is shape up deformation*/
 };

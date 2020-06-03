@@ -771,44 +771,45 @@ void MainWindow::QMeshPatchRangeActive()
 	}
 	
 }
+
+void MainWindow::chartWindow()
+{
+	ChartsViewer* chartviewer = new ChartsViewer();
+	chartviewer->show();
+	chartviewer->resize(500, 500);
+}
+
 void MainWindow::test_in_mainwindow()
 {
-	QModelIndex index = ui->treeView->currentIndex();
-	QStandardItem* selectedModel = treeModel->itemFromIndex(index);
-	if (selectedModel == NULL)
-		return;
-	string selectedModelType = selectedModel->data().toString().toStdString();
-
+	QChart* chart = new QChart();
 	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;)
 	{
 		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
 		if ("Waypoints" == polygenMesh->getModelName())
 		{
-			int chartstart = 0;
-			QChart* chart = new QChart();
-			chart->legend()->hide();
-			chart->createDefaultAxes();
-			chart->setTitle("Simple line chart example");
+			int nodeCount = 0;
 			for (GLKPOSITION pos_QmeshPatch = polygenMesh->GetMeshList().GetHeadPosition(); pos_QmeshPatch != nullptr;)
 			{
 				QMeshPatch* qmeshPatch = (QMeshPatch*)polygenMesh->GetMeshList().GetNext(pos_QmeshPatch);
 				QLineSeries* series = new QLineSeries();
-				series->setColor(QColor(0, 0, 0));
 				for (GLKPOSITION pos_QmeshNode = qmeshPatch->GetNodeList().GetHeadPosition(); pos_QmeshNode != nullptr;)
 				{
 					QMeshNode* qmeshNode = (QMeshNode*)qmeshPatch->GetNodeList().GetNext(pos_QmeshNode);
-					series->append(chartstart++, qmeshNode->m_orginalPostion[0]);
+					series->append(nodeCount++, qmeshNode->m_orginalPostion[0]);
 				}
+				series->setName(QString::fromStdString(qmeshPatch->waypointPatchName));
 				chart->addSeries(series);
 			}
-			QChartView* chartView = new QChartView(chart);
-			chartView->setRenderHint(QPainter::Antialiasing);
-			ChartsViewer* chartview = new ChartsViewer();
-			chartview->setCentralWidget(chartView);
-			chartview->show();
-			chartview->resize(500, 500);
 		}
 	}
+	chart->setTitle("Waypoint All Rowdata X");
+	chart->createDefaultAxes();
+	QChartView* chartView = new QChartView(chart);
+	chartView->setRenderHint(QPainter::Antialiasing);
+	ChartsViewer* chartviewer = new ChartsViewer();
+	chartviewer->setCentralWidget(chartView);
+	chartviewer->show();
+	chartviewer->showMaximized();
 
 
 
@@ -828,7 +829,7 @@ void MainWindow::test_in_mainwindow()
 	//chart->legend()->hide();
 	//chart->addSeries(series1);
 	//chart->addSeries(series);
-	//chart->createDefaultAxes();
+	////chart->createDefaultAxes();
 	//chart->setTitle("Simple line chart example");
 	//QChartView* chartView = new QChartView(chart);
 	//chartView->setRenderHint(QPainter::Antialiasing);
@@ -985,42 +986,4 @@ void MainWindow::test_in_mainwindow()
 }
 
 
-void MainWindow::_drawWaypointData(GLKObList* polygenMeshList)
-{
-	QModelIndex index = ui->treeView->currentIndex();
-	QStandardItem* selectedModel = treeModel->itemFromIndex(index);
-	if (selectedModel == NULL)
-		return;
-	string selectedModelType = selectedModel->data().toString().toStdString();
 
-	for (GLKPOSITION pos = polygenMeshList->GetHeadPosition(); pos != nullptr;)
-	{
-		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList->GetNext(pos);
-		if ("Waypoints" == polygenMesh->getModelName())
-		{
-			int chartstart = 0;
-			QChart* chart = new QChart();
-			chart->legend()->hide();
-			chart->createDefaultAxes();
-			chart->setTitle("Simple line chart example");
-			for (GLKPOSITION pos_QmeshPatch = polygenMesh->GetMeshList().GetHeadPosition(); pos_QmeshPatch != nullptr;)
-			{
-				QMeshPatch* qmeshPatch = (QMeshPatch*)polygenMesh->GetMeshList().GetNext(pos_QmeshPatch);
-				QLineSeries* series = new QLineSeries();
-				series->setColor(QColor(0, 0, 0));
-				for (GLKPOSITION pos_QmeshNode = qmeshPatch->GetNodeList().GetHeadPosition(); pos_QmeshNode != nullptr;)
-				{
-					QMeshNode* qmeshNode = (QMeshNode*)qmeshPatch->GetNodeList().GetNext(pos_QmeshNode);
-					series->append(chartstart++,qmeshNode->m_orginalPostion[0]);
-				}
-				chart->addSeries(series);
-			}
-			QChartView* chartView = new QChartView(chart);
-			chartView->setRenderHint(QPainter::Antialiasing);
-			ChartsViewer* chartview = new ChartsViewer();
-			chartview->setCentralWidget(chartView);
-			chartview->show();
-			chartview->resize(500, 500);
-		}
-	}
-}
