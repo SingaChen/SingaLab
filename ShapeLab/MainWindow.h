@@ -9,8 +9,7 @@
 #include <omp.h>
 #include <QTimer>
 #include <QLabel>
-#include <QtCharts>
-QT_CHARTS_USE_NAMESPACE
+#include "ChartsViewer.h"
 
 
 using namespace std;
@@ -83,7 +82,7 @@ private slots:
     /*This is bulit by Singa */
     void selectDir();
     void test_in_mainwindow();
-
+    void _drawWaypointData(GLKObList* polygenMeshList);
 
 	/*This is shape up deformation*/
 };

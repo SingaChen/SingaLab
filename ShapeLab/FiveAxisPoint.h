@@ -43,7 +43,7 @@ public:
 	/*readWayPointData will build up a Polygenmesh in polygenmeshilist,
 	  and this polygenmesh contain the data of waypoint something like xyznxnynz,
 	  also, it will display the model in the view window and model tree*/
-	void readWayPointData(QString packName, bool Yup2Zup_switch, double Zoff, double Xoff, double Yoff,GLKObList *polygenMeshList, vector<string> wayPointFileCell, GLKLib* pGLK);
+	void readWayPointData(QString packName, bool Yup2Zup_switch, GLKObList *polygenMeshList, vector<string> wayPointFileCell, GLKLib* pGLK);
 	
 	/*readSliceData will build up a Polygenmesh in polygenmeshilist,
 	  and this polygenmesh contain the data of each layer,
@@ -81,6 +81,7 @@ public:
 	void optimizationC(QMeshPatch* WayPointPatch);
 	void writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rltDir, int GcodeGeneRange_From, int GcodeGeneRange_To, double E3_xOff, double E3_yOff);
 
+	void _drawWaypointData(GLKObList* polygenMeshList);
 
 
 	void testXYZBCE(QMeshPatch* WayPointPatch, string Dir, bool testSwitch);

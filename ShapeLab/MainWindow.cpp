@@ -640,7 +640,7 @@ void MainWindow::tianGcode2ABB()
 	  
 	  */
 	initialPoint->natSort(ui->lineEdit_PosNorFileDir->text(), wayPointFileCell);
-	initialPoint->readWayPointData(ui->lineEdit_PosNorFileDir->text(), Yup2Zup_switch,Xoff,Yoff,Zoff,&polygenMeshList,wayPointFileCell, pGLK);
+	initialPoint->readWayPointData(ui->lineEdit_PosNorFileDir->text(), Yup2Zup_switch,&polygenMeshList,wayPointFileCell, pGLK);
 	updateTree();
 	viewAllWaypointLayers();
 	updateTree();
@@ -731,8 +731,11 @@ void MainWindow::selectDir()
 
 void MainWindow::QMeshPatchRangeActive()
 {
+	//if((ui->treeView->currentIndex()==NULL)
 	QModelIndex index = ui->treeView->currentIndex();
 	QStandardItem* selectedModel = treeModel->itemFromIndex(index);
+	if (selectedModel == NULL)
+		return;
 	string selectedModelType = selectedModel->data().toString().toStdString();
 	if (selectedModelType == "POLYGENMESH")
 	{
@@ -770,10 +773,79 @@ void MainWindow::QMeshPatchRangeActive()
 }
 void MainWindow::test_in_mainwindow()
 {
-	QChart
+	QModelIndex index = ui->treeView->currentIndex();
+	QStandardItem* selectedModel = treeModel->itemFromIndex(index);
+	if (selectedModel == NULL)
+		return;
+	string selectedModelType = selectedModel->data().toString().toStdString();
+
+	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;)
+	{
+		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
+		if ("Waypoints" == polygenMesh->getModelName())
+		{
+			int chartstart = 0;
+			QChart* chart = new QChart();
+			chart->legend()->hide();
+			chart->createDefaultAxes();
+			chart->setTitle("Simple line chart example");
+			for (GLKPOSITION pos_QmeshPatch = polygenMesh->GetMeshList().GetHeadPosition(); pos_QmeshPatch != nullptr;)
+			{
+				QMeshPatch* qmeshPatch = (QMeshPatch*)polygenMesh->GetMeshList().GetNext(pos_QmeshPatch);
+				QLineSeries* series = new QLineSeries();
+				series->setColor(QColor(0, 0, 0));
+				for (GLKPOSITION pos_QmeshNode = qmeshPatch->GetNodeList().GetHeadPosition(); pos_QmeshNode != nullptr;)
+				{
+					QMeshNode* qmeshNode = (QMeshNode*)qmeshPatch->GetNodeList().GetNext(pos_QmeshNode);
+					series->append(chartstart++, qmeshNode->m_orginalPostion[0]);
+				}
+				chart->addSeries(series);
+			}
+			QChartView* chartView = new QChartView(chart);
+			chartView->setRenderHint(QPainter::Antialiasing);
+			ChartsViewer* chartview = new ChartsViewer();
+			chartview->setCentralWidget(chartView);
+			chartview->show();
+			chartview->resize(500, 500);
+		}
+	}
+
+
+
+
+	//QLineSeries* series = new QLineSeries();
+	//series->setColor(QColor(0,0,0));
+	//series->append(0, 6);
+	//series->append(2, 4);
+	//series->append(3, 8);
+	//series->append(7, 4);
+	//series->append(10, 5);
+	//QLineSeries* series1 = new QLineSeries();
+	//series1->setName("线条1");
+	//series1->setColor(QColor(0, 100, 255));
+	//*series1 << QPointF(11, 1) << QPointF(13, 3) << QPointF(17, 6) << QPointF(18, 3) << QPointF(20, 2);
+	//QChart* chart = new QChart();
+	//chart->legend()->hide();
+	//chart->addSeries(series1);
+	//chart->addSeries(series);
+	//chart->createDefaultAxes();
+	//chart->setTitle("Simple line chart example");
+	//QChartView* chartView = new QChartView(chart);
+	//chartView->setRenderHint(QPainter::Antialiasing);
+
+	////this->setCentralWidget(chartView);
+
+	//ChartsViewer *chartview = new ChartsViewer();
+	//chartview->setCentralWidget(chartView);
+	//chartview->show();
+	//chartview->resize(500, 500);
+	
+	
+
+
 	//Qt += QChart;
 	//QChart* m_chart = new QChart();
-	QSplineSeries* series1 = new QSplineSeries();//实例化一个QLineSeries对象
+	//QSplineSeries* series1 = new QSplineSeries();//实例化一个QLineSeries对象
 	//series1->setColor(QColor(0, 100, 255));
 	//series1->append(QPointF(0, qrand() % 200));
 	//series1->append(QPointF(30, qrand() % 200));
@@ -910,4 +982,45 @@ void MainWindow::test_in_mainwindow()
 
 
 
+}
+
+
+void MainWindow::_drawWaypointData(GLKObList* polygenMeshList)
+{
+	QModelIndex index = ui->treeView->currentIndex();
+	QStandardItem* selectedModel = treeModel->itemFromIndex(index);
+	if (selectedModel == NULL)
+		return;
+	string selectedModelType = selectedModel->data().toString().toStdString();
+
+	for (GLKPOSITION pos = polygenMeshList->GetHeadPosition(); pos != nullptr;)
+	{
+		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList->GetNext(pos);
+		if ("Waypoints" == polygenMesh->getModelName())
+		{
+			int chartstart = 0;
+			QChart* chart = new QChart();
+			chart->legend()->hide();
+			chart->createDefaultAxes();
+			chart->setTitle("Simple line chart example");
+			for (GLKPOSITION pos_QmeshPatch = polygenMesh->GetMeshList().GetHeadPosition(); pos_QmeshPatch != nullptr;)
+			{
+				QMeshPatch* qmeshPatch = (QMeshPatch*)polygenMesh->GetMeshList().GetNext(pos_QmeshPatch);
+				QLineSeries* series = new QLineSeries();
+				series->setColor(QColor(0, 0, 0));
+				for (GLKPOSITION pos_QmeshNode = qmeshPatch->GetNodeList().GetHeadPosition(); pos_QmeshNode != nullptr;)
+				{
+					QMeshNode* qmeshNode = (QMeshNode*)qmeshPatch->GetNodeList().GetNext(pos_QmeshNode);
+					series->append(chartstart++,qmeshNode->m_orginalPostion[0]);
+				}
+				chart->addSeries(series);
+			}
+			QChartView* chartView = new QChartView(chart);
+			chartView->setRenderHint(QPainter::Antialiasing);
+			ChartsViewer* chartview = new ChartsViewer();
+			chartview->setCentralWidget(chartView);
+			chartview->show();
+			chartview->resize(500, 500);
+		}
+	}
 }

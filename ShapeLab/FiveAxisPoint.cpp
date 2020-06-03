@@ -33,7 +33,7 @@ void fiveAxisPoint::natSort(QString dirctory, vector<string>& fileNameCell)
 	sort(fileNameCell.begin(), fileNameCell.end(), doj::alphanum_less<std::string>());
 }
 
-void fiveAxisPoint::readWayPointData(QString packName, bool Yup2Zup_switch, double Zoff, double Xoff, double Yoff, GLKObList* polygenMeshList, vector<string> wayPointFileCell, GLKLib* pGLK)
+void fiveAxisPoint::readWayPointData(QString packName, bool Yup2Zup_switch, GLKObList* polygenMeshList, vector<string> wayPointFileCell, GLKLib* pGLK)
 {
 	// isbuiled
 	
@@ -71,7 +71,7 @@ void fiveAxisPoint::readWayPointData(QString packName, bool Yup2Zup_switch, doub
 
 		//cout << waypoint->isSupportLayer << endl;
 
-		waypoint->inputPosNorFile(filename, waypoint->isSupportLayer, Yup2Zup_switch,Zoff,Xoff,Yoff);
+		waypoint->inputPosNorFile(filename, waypoint->isSupportLayer, Yup2Zup_switch);
 		waypntNum += waypoint->GetNodeNumber();
 	}
 	////Display
@@ -1696,7 +1696,8 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 	int sTemperature = 200;						// The temperature of Extruder Support
 
 
-	int V_Print = 20;                           //Speed of end-effector while printing
+	int V_Print = 20;                           //Speed of end-effector while printing initial model
+	int V_Support = 15;
 	double deltaDistance;
 	double deltaE;
 	double F_Print;
@@ -1711,10 +1712,10 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 	int F_PumpBack = 1000;						// Speed of F_PumpBack
 	int F_PumpCompensate = 1000;				// Speed of PumpCompensate
 
-	double E_PumpBack = -12;					// The extruder pump back Xmm
-	double E_PumpCompensate = 11;				// The extruder pump compensate Xmm
-	double E_PumpCompensateL1 = 15;				// The extruder pump compensate for 1st layer Xmm
-	double E_PumpCompensateNewE = 12;			// The extruder pump compensate for new type layer Xmm
+	double E_PumpBack = -8;					// The extruder pump back Xmm
+	double E_PumpCompensate = 7;				// The extruder pump compensate Xmm
+	double E_PumpCompensateL1 = 11;				// The extruder pump compensate for 1st layer Xmm
+	double E_PumpCompensateNewE = 8;			// The extruder pump compensate for new type layer Xmm
 
 	Eigen::Matrix3f R1; R1 << 0, -1, 0, 1, 0, 0, 0, 0, 1;
 	Eigen::Matrix3f RX0; RX0 << 1, 0, 0, 0, 1, 0, 0, 0, 1;
@@ -1818,7 +1819,10 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 
 				deltaDistance = sqrt(pow((XPrev - X), 2) + pow((YPrev - Y), 2) + pow((ZPrev - Z), 2));
 				deltaE = EPrev - E;
-				F_Print = abs(V_Print * deltaE * 60 / deltaDistance);
+				if (WayPointPatch->isSupportLayer)
+					F_Print = abs(V_Support * deltaE * 60 / deltaDistance);
+				else
+					F_Print = abs(V_Print * deltaE * 60 / deltaDistance);
 			
 			}
 			else
@@ -1904,7 +1908,7 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 					std::fprintf(fp, "G92 E0 \n");
 					std::fprintf(fp, "G0 F%d E%.3f \n", F_PumpBack, E_PumpBack);
 					// return to the home point Z_home
-					std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, 1200);
+					std::fprintf(fp, "G0 F%d Z1200 \n", F_G0_Z);
 
 					// change extruder
 					if (WayPointPatch->isSupportLayer == true)
@@ -1967,7 +1971,6 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 						std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, (Z + Z_compensateUpDistance));
 						std::fprintf(fp, "G0 F%d E%.3f \n", F_PumpCompensate, E);
 						//std::fprintf(fp, "G0 F%d Z%.3f E%.3f \n", F_G1_support, Z, E);
-						std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, Z);
 					}
 
 					//std::cout << "oldE = " << odlE << std::endl;
@@ -1983,11 +1986,16 @@ void fiveAxisPoint::writeABBGcode(PolygenMesh* polygenMesh_Waypoints, string rlt
 
 	std::fprintf(fp, "G92 E0 \n");
 	std::fprintf(fp, "G0 F%d E%.3f \n", F_G0_XYBC, E_PumpBack); // PumpBack
-	std::fprintf(fp, "G0 F%d Z%.3f \n", F_G0_Z, 1200); // return to the home point Z_home
+	std::fprintf(fp, "G0 F%d Z1200 \n", F_G0_Z);; // return to the home point Z_home
 	//std::fprintf(fp, "G0 F%d X0 Y0 B0 C0 \n", F_G0_XYBC);
 	//std::fprintf(fp, "M30\n");// Stop all of the motion
 
 	std::fclose(fp);
 
 	std::cout << "------------------------------------------- " << rltDir << " Gcode Write Finish!\n" << std::endl;
+}
+
+void fiveAxisPoint::_drawWaypointData(GLKObList* polygenMeshList)
+{
+	
 }

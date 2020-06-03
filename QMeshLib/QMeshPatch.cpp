@@ -1594,7 +1594,7 @@ void QMeshPatch::ComputeBoundingBox(double boundingBox[])
 	}
 }
 
-bool QMeshPatch::inputPosNorFile(char* filename, bool flagSupportNode, bool Yup2Zup, double UpZvalue, double Xmove, double Ymove)
+bool QMeshPatch::inputPosNorFile(char* filename, bool flagSupportNode, bool Yup2Zup)
 {
 	FILE* fp;
 	char linebuf[2048];
@@ -1653,10 +1653,10 @@ bool QMeshPatch::inputPosNorFile(char* filename, bool flagSupportNode, bool Yup2
 		for (Pos = nodeList.GetHeadPosition(); Pos != NULL;) {
 			node = (QMeshNode*)(nodeList.GetNext(Pos));
 
-			node->m_printPostion[0] = node->m_orginalPostion[0] + Xmove;
+			node->m_printPostion[0] = node->m_orginalPostion[0];// +Xmove;
 			//node->m_printPostion[1] = node->m_orginalPostion[2] * (-1.0);
-			node->m_printPostion[1] = node->m_orginalPostion[2] + Ymove;
-			node->m_printPostion[2] = node->m_orginalPostion[1] + UpZvalue;
+			node->m_printPostion[1] = node->m_orginalPostion[2];// +Ymove;
+			node->m_printPostion[2] = node->m_orginalPostion[1];// +UpZvalue;
 
 			node->m_printNormal[0] = node->m_orginalNormal[0];
 			node->m_printNormal[1] = node->m_orginalNormal[2];

@@ -80,9 +80,13 @@
     <IncludePath>C:\Qt5.12.3\5.12.3\msvc2017_64\include\QtCharts;C:\Qt5.12.3\5.12.3\msvc2017_64\include;$(IncludePath)</IncludePath>
     <LibraryPath>C:\Qt5.12.3\5.12.3\msvc2017_64\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>C:\Qt5.12.3\5.12.3\msvc2017_64\include\QtCharts;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Qt5.12.3\5.12.3\msvc2017_64\include\QtCharts;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.\GeneratedFiles\$(ConfigurationName);.\GeneratedFiles;.;..\QMeshLib;..\GLKLib;C:\QT5.12.3\5.12.3\MSVC2017_64\include;C:\QT5.12.3\5.12.3\MSVC2017_64\include\QtOpenGL;C:\QT5.12.3\5.12.3\MSVC2017_64\include\QtWidgets;C:\Qt5.12.3\5.12.3\msvc2017_64\include\QtCharts;C:\QT5.12.3\5.12.3\MSVC2017_64\include\QtGui;C:\QT5.12.3\5.12.3\MSVC2017_64\include\QtANGLE;C:\QT5.12.3\5.12.3\MSVC2017_64\include\QtCore;release;C:\VulkanSDK\1.0.51.0\include;C:\QT5.12.3\5.12.3\MSVC2017_64\mkspecs\win32-msvc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Qt5.12.3\5.12.3\msvc2017_64\include\QtCharts;.\GeneratedFiles\$(ConfigurationName);.\GeneratedFiles;.;..\QMeshLib;..\GLKLib;C:\QT5.12.3\5.12.3\MSVC2017_64\include;C:\QT5.12.3\5.12.3\MSVC2017_64\include\QtOpenGL;C:\QT5.12.3\5.12.3\MSVC2017_64\include\QtWidgets;C:\QT5.12.3\5.12.3\MSVC2017_64\include\QtGui;C:\QT5.12.3\5.12.3\MSVC2017_64\include\QtANGLE;C:\QT5.12.3\5.12.3\MSVC2017_64\include\QtCore;release;C:\VulkanSDK\1.0.51.0\include;C:\QT5.12.3\5.12.3\MSVC2017_64\mkspecs\win32-msvc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>-Zc:rvalueCast -Zc:inline -Zc:strictStrings -Zc:throwingNew -Zc:referenceBinding -Zc:__cplusplus -w34100 -w34189 -w44996 -w44456 -w44457 -w44458 %(AdditionalOptions)</AdditionalOptions>
       <AssemblerListingLocation>release\</AssemblerListingLocation>
       <BrowseInformation>false</BrowseInformation>
@@ -102,7 +106,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>QMeshLib.lib;GLKLib.lib;opengl32.lib;glu32.lib;Qt5Chartsd.lib;Qt5Charts.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>QMeshLib.lib;GLKLib.lib;opengl32.lib;glu32.lib;Qt5Charts.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\QMeshLib\release;..\GLKLib\release;C:\QT5.12.3\5.12.3\MSVC2017_64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>"/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'" %(AdditionalOptions)</AdditionalOptions>
       <DataExecutionPrevention>true</DataExecutionPrevention>
@@ -163,7 +167,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>QMeshLib.lib;GLKLib.lib;opengl32.lib;glu32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>QMeshLib.lib;GLKLib.lib;opengl32.lib;glu32.lib;Qt5Chartsd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\QMeshLib\debug;..\GLKLib\debug;C:\QT5.12.3\5.12.3\MSVC2017_64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>"/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'" %(AdditionalOptions)</AdditionalOptions>
       <DataExecutionPrevention>true</DataExecutionPrevention>
@@ -204,6 +208,7 @@
     </QtUic>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ChartsViewer.cpp" />
     <ClCompile Include="DeformTet.cpp" />
     <ClCompile Include="FiveAxisPoint.cpp" />
     <ClCompile Include="MainWindow.cpp" />
@@ -215,6 +220,7 @@
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include="ChartsViewer.h" />
     <ClInclude Include="FiveAxisPoint.h" />
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <FileType>Document</FileType>
@@ -238,9 +244,9 @@
     <ClInclude Include="SORODeform.h" />
   </ItemGroup>
   <ItemGroup>
+    <QtUic Include="ChartsViewer.ui" />
     <QtUic Include="MainWindow.ui">
     </QtUic>
-    <QtUic Include="test.ui" />
   </ItemGroup>
   <ItemGroup>
     <None Include="All.png" />

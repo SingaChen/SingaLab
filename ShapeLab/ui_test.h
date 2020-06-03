@@ -19,16 +19,16 @@ QT_BEGIN_NAMESPACE
 class Ui_Form
 {
 public:
-    QChartView *widget;
+    QChartView *chartview;
 
     void setupUi(QWidget *Form)
     {
         if (Form->objectName().isEmpty())
             Form->setObjectName(QString::fromUtf8("Form"));
         Form->resize(400, 300);
-        widget = new QChartView(Form);
-        widget->setObjectName(QString::fromUtf8("widget"));
-        widget->setGeometry(QRect(120, 150, 120, 80));
+        chartview = new QChartView(Form);
+        chartview->setObjectName(QString::fromUtf8("chartview"));
+        chartview->setGeometry(QRect(120, 150, 120, 80));
 
         retranslateUi(Form);
 
