@@ -59,7 +59,7 @@ public:
 	bool inputOFFFile(char* filename, bool bOBTFile = false, bool Yup2Zup = false, double UpZvalue = 0.0, double Xmove = 0.0, double Ymove = 0.0);
 
 	//bool inputPosNorFile(char* filename, bool flagSupportNode); // Added by ZTY 2020-02-28
-	bool inputPosNorFile(char* filename, bool flagSupportNode, bool Yup2Zup);
+	bool inputPosNorFile(char* filename, bool flagSupportNode, bool Yup2Zup, double Xoff, double Yoff, double Zoff);
 
 	void outputOBJFile(char* filename, bool bOBTFile = false);
 	void outputTrglOBJFile(char* filename);

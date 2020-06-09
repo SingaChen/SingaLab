@@ -1594,7 +1594,7 @@ void QMeshPatch::ComputeBoundingBox(double boundingBox[])
 	}
 }
 
-bool QMeshPatch::inputPosNorFile(char* filename, bool flagSupportNode, bool Yup2Zup)
+bool QMeshPatch::inputPosNorFile(char* filename, bool flagSupportNode, bool Yup2Zup, double Xoff, double Yoff, double Zoff)
 {
 	FILE* fp;
 	char linebuf[2048];
@@ -1643,31 +1643,46 @@ bool QMeshPatch::inputPosNorFile(char* filename, bool flagSupportNode, bool Yup2
 		for (Pos = nodeList.GetHeadPosition(); Pos != NULL;) {
 			node = (QMeshNode*)(nodeList.GetNext(Pos));
 
-			node->m_orginalNormal[0] = -1 * node->m_orginalNormal[0];
-			node->m_orginalNormal[1] = -1 * node->m_orginalNormal[1];
-			node->m_orginalNormal[2] = -1 * node->m_orginalNormal[2];
+			node->m_flipNormal[0] = -1 * node->m_orginalNormal[0];
+			node->m_flipNormal[1] = -1 * node->m_orginalNormal[1];
+			node->m_flipNormal[2] = -1 * node->m_orginalNormal[2];
 		}
 	}
-	// change the coordinate of waypoint from Y up to (Z + z) up.
-	if (Yup2Zup) {
+	else {
 		for (Pos = nodeList.GetHeadPosition(); Pos != NULL;) {
 			node = (QMeshNode*)(nodeList.GetNext(Pos));
 
-			node->m_printPostion[0] = node->m_orginalPostion[0];// +Xmove;
-			//node->m_printPostion[1] = node->m_orginalPostion[2] * (-1.0);
-			node->m_printPostion[1] = node->m_orginalPostion[2];// +Ymove;
-			node->m_printPostion[2] = node->m_orginalPostion[1];// +UpZvalue;
-
-			node->m_printNormal[0] = node->m_orginalNormal[0];
-			node->m_printNormal[1] = node->m_orginalNormal[2];
-			//node->m_printNormal[1] = node->m_orginalNormal[2] * (-1.0);
-			node->m_printNormal[2] = node->m_orginalNormal[1];
-			// check the origial waypoints' zz coordinate
-			if (node->m_printPostion[2] <= 0) node->negativeZz = true;
+			node->m_flipNormal[0] =  node->m_orginalNormal[0];
+			node->m_flipNormal[1] =  node->m_orginalNormal[1];
+			node->m_flipNormal[2] =  node->m_orginalNormal[2];
+		}
+	}
+	// change the coordinate of waypoint from Y up to Z up.
+	if (Yup2Zup) {
+		for (Pos = nodeList.GetHeadPosition(); Pos != NULL;) {
+			node = (QMeshNode*)(nodeList.GetNext(Pos));
+			node->m_YZ_rotatePostion[0] = node->m_orginalPostion[0];
+			node->m_YZ_rotatePostion[1] = node->m_orginalPostion[2];
+			node->m_YZ_rotatePostion[2] = node->m_orginalPostion[1];
+			node->m_YZ_rotateNormal[0] = node->m_flipNormal[0];
+			node->m_YZ_rotateNormal[1] = node->m_flipNormal[2];
+			node->m_YZ_rotateNormal[2] = node->m_flipNormal[1];
 		}
 	}
 
-	// change the coordinate of waypoint from Y up to (Z + z) up.
+	// move the node to (X,Y,Z)
+	for (Pos = nodeList.GetHeadPosition(); Pos != NULL;) 
+	{
+		node = (QMeshNode*)(nodeList.GetNext(Pos));
+		node->m_printPostion[0] = node->m_YZ_rotatePostion[0] + Xoff;
+		node->m_printPostion[1] = node->m_YZ_rotatePostion[1] + Yoff;
+		node->m_printPostion[2] = node->m_YZ_rotatePostion[2] + Zoff;
+		node->m_printNormal[0] = node->m_YZ_rotateNormal[0];
+		node->m_printNormal[1] = node->m_YZ_rotateNormal[1];
+		node->m_printNormal[2] = node->m_YZ_rotateNormal[2];
+		// check the origial waypoints' zz coordinate
+		//if (node->m_printPostion[2] <= 0) node->negativeZz = true;
+	}
 
 	for (Pos = nodeList.GetHeadPosition(); Pos != NULL;) {
 		node = (QMeshNode*)(nodeList.GetNext(Pos));

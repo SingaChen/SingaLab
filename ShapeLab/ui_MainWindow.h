@@ -96,6 +96,7 @@ public:
     QLineEdit *lineEdit_targetFileName;
     QPushButton *pushButton_test;
     QPushButton *pushButton_read;
+    QPushButton *pushButton_chartWindow;
     QTreeView *treeView;
     QPushButton *pushButton_clearAll;
     QMenuBar *menuBar;
@@ -557,6 +558,11 @@ public:
 
         verticalLayout->addWidget(pushButton_read);
 
+        pushButton_chartWindow = new QPushButton(dockWidgetContents);
+        pushButton_chartWindow->setObjectName(QString::fromUtf8("pushButton_chartWindow"));
+
+        verticalLayout->addWidget(pushButton_chartWindow);
+
         treeView = new QTreeView(dockWidgetContents);
         treeView->setObjectName(QString::fromUtf8("treeView"));
         treeView->setEnabled(true);
@@ -708,6 +714,7 @@ public:
         lineEdit_targetFileName->setText(QApplication::translate("MainWindow", "GcodeBHead.txt", nullptr));
         pushButton_test->setText(QApplication::translate("MainWindow", "PushButton", nullptr));
         pushButton_read->setText(QApplication::translate("MainWindow", "read", nullptr));
+        pushButton_chartWindow->setText(QApplication::translate("MainWindow", "ChartWindow", nullptr));
         pushButton_clearAll->setText(QApplication::translate("MainWindow", "Clear All", nullptr));
         menuFile->setTitle(QApplication::translate("MainWindow", "File", nullptr));
         menuView->setTitle(QApplication::translate("MainWindow", "View", nullptr));

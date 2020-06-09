@@ -1236,6 +1236,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="pushButton_chartWindow">
+       <property name="text">
+        <string>ChartWindow</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QTreeView" name="treeView">
        <property name="enabled">
         <bool>true</bool>

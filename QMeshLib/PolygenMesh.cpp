@@ -352,7 +352,7 @@ void PolygenMesh::_buildDrawNodeList()
             if (node->m_nIdentifiedPatchIndex >= 0)
                 _changeValueToColor(node->m_nIdentifiedPatchIndex, rr, gg, bb);
 
-            if (node->negativeZ) {
+            if (node->overV_C) {
                 rr = 1.0; gg = 0.2; bb = 0.2;
             }
             glColor3f(rr, gg, bb);

@@ -136,8 +136,10 @@ void MainWindow::createActions()
 	//Button
 	connect(ui->pushButton_selectWaypointFile, SIGNAL(released()), this, SLOT(selectDir()));
 	connect(ui->pushButton_read, SIGNAL(released()), this, SLOT(tianGcode2ABB()));
-	connect(ui->pushButton_test, SIGNAL(released()), this, SLOT(test_in_mainwindow()));
 	connect(ui->pushButton_rangeActive, SIGNAL(released()), this, SLOT(QMeshPatchRangeActive()));
+	connect(ui->pushButton_chartWindow, SIGNAL(released()), this, SLOT(chartWindow()));
+
+	connect(ui->pushButton_test, SIGNAL(released()), this, SLOT(test_in_mainwindow()));
 	
 }
 
@@ -631,8 +633,8 @@ void MainWindow::viewAllWaypointLayers()
 void MainWindow::tianGcode2ABB()
 {
 	fiveAxisPoint* initialPoint = new fiveAxisPoint();
-	bool Yup2Zup_switch = 1;
-	double Xoff = 0;
+	bool Yup2Zup_switch = true;
+	double Xoff = -10;
 	double Yoff = 0;
 	double Zoff = 0;
 	/*First step is natsort the filedir like 100->101->200
@@ -640,7 +642,7 @@ void MainWindow::tianGcode2ABB()
 	  
 	  */
 	initialPoint->natSort(ui->lineEdit_PosNorFileDir->text(), wayPointFileCell);
-	initialPoint->readWayPointData(ui->lineEdit_PosNorFileDir->text(), Yup2Zup_switch,&polygenMeshList,wayPointFileCell, pGLK);
+	initialPoint->readWayPointData(ui->lineEdit_PosNorFileDir->text(), Yup2Zup_switch, Xoff, Yoff, Zoff, &polygenMeshList,wayPointFileCell, pGLK);
 	updateTree();
 	viewAllWaypointLayers();
 	updateTree();
@@ -654,7 +656,7 @@ void MainWindow::tianGcode2ABB()
 		}
 		else 
 		{
-			initialPoint->readSliceData(ui->lineEdit_OFFLayerFile->text(), Yup2Zup_switch, Xoff, Yoff, Zoff ,&polygenMeshList, sliceSetFileCell,pGLK);
+			initialPoint->readSliceData(ui->lineEdit_OFFLayerFile->text(), Yup2Zup_switch, Zoff, Xoff, Yoff ,&polygenMeshList, sliceSetFileCell,pGLK);
 			
 			updateTree();
 			viewAllWaypointLayers();
@@ -671,16 +673,13 @@ void MainWindow::tianGcode2ABB()
 	int GcodeGeneRange_From = 0;
 	int GcodeGeneRange_To = wayPointFileCell.size() - 1;
 	bool varyThickness_switch = ui->checkBox_varyHeight->isChecked();
-	double UpZHeight = 0;
+	
 	bool varyWidth_switch = false;
 	bool collisionDetection_switch = ui->checkBox_collisionDetection->isChecked();
-	bool testXYZBCE_switch = false;
-	bool testLayerHeight_switch = false;
 	bool testW_switch = false;
 	string targetFileName = (ui->lineEdit_targetFileName->text()).toStdString();
-	double E3_Xoff = 0;
-	double E3_Yoff = 0;
-	double Xmove = 0;
+	double UpZHeight = 0;
+	double Xmove = -10;
 	double Ymove = 0;
 	PolygenMesh* Slices;
 	PolygenMesh* Waypoints;
@@ -697,7 +696,8 @@ void MainWindow::tianGcode2ABB()
 	initialPoint->singularityOpt(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To);
 	initialPoint->height2E(Waypoints, GcodeGeneRange_From, GcodeGeneRange_To, varyThickness_switch);
 	//initialPoint->writeGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
-	initialPoint->writeABBGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To, E3_Xoff, E3_Yoff);
+	initialPoint->CNC2ABB(Waypoints);
+	initialPoint->writeABBGcode(Waypoints, targetFileName, GcodeGeneRange_From, GcodeGeneRange_To);
 	viewAllWaypointLayers();
 	pGLK->refresh(true);
 	delete initialPoint;
@@ -775,13 +775,20 @@ void MainWindow::QMeshPatchRangeActive()
 void MainWindow::chartWindow()
 {
 	ChartsViewer* chartviewer = new ChartsViewer();
+	chartviewer->getPolygenMeshList(&polygenMeshList);
+	
+	chartviewer->update();
 	chartviewer->show();
-	chartviewer->resize(500, 500);
 }
 
 void MainWindow::test_in_mainwindow()
 {
-	QChart* chart = new QChart();
+	
+	
+	
+	
+	
+	/*QChart* chart = new QChart();
 	for (GLKPOSITION pos = polygenMeshList.GetHeadPosition(); pos != nullptr;)
 	{
 		PolygenMesh* polygenMesh = (PolygenMesh*)polygenMeshList.GetNext(pos);
@@ -809,7 +816,7 @@ void MainWindow::test_in_mainwindow()
 	ChartsViewer* chartviewer = new ChartsViewer();
 	chartviewer->setCentralWidget(chartView);
 	chartviewer->show();
-	chartviewer->showMaximized();
+	chartviewer->showMaximized();*/
 
 
 

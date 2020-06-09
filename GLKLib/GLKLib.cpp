@@ -481,7 +481,6 @@ void GLKLib::DelDisplayObj3(GLKEntity *entity)
     refresh();
 }
 
-
 void GLKLib::GLDrawDisplayObjList(bool redrawAll)
 {
     GLKPOSITION Pos;

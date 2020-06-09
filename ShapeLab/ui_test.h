@@ -12,23 +12,18 @@
 #include <QtCore/QVariant>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QWidget>
-#include <qchartview.h>
 
 QT_BEGIN_NAMESPACE
 
 class Ui_Form
 {
 public:
-    QChartView *chartview;
 
     void setupUi(QWidget *Form)
     {
         if (Form->objectName().isEmpty())
             Form->setObjectName(QString::fromUtf8("Form"));
         Form->resize(400, 300);
-        chartview = new QChartView(Form);
-        chartview->setObjectName(QString::fromUtf8("chartview"));
-        chartview->setGeometry(QRect(120, 150, 120, 80));
 
         retranslateUi(Form);
 

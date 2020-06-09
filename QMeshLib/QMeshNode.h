@@ -179,11 +179,16 @@ private:
 public:
 	double m_orginalNormal[3];
 	double m_orginalPostion[3];
+	double m_YZ_rotateNormal[3];
+	double m_YZ_rotatePostion[3];
+	double m_flipNormal[3];
 	double m_printNormal[3];
 	double m_printPostion[3];
 	double m_finalNormal[3];
 	double m_finalPostion[3];
-	double m_XYZBCE[6];
+	double m_XYZBCE[7];//X/Y/Z/B/C/E/S
+	double m_ABB_XYZBCEF[7];
+	double m_ABB_Velocty[3];
 	double m_layerHeight;
 	double m_layerWidth;
 
@@ -207,6 +212,7 @@ public:
 	bool   isNegZStart = false;
 	bool   isNegZEnd = false;
 	bool   negativeZz = false;
+	bool   overV_C = false;
 	bool   isHighLight = false;
 	bool   isPrintPnt = false;
 

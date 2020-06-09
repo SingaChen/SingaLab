@@ -9,7 +9,7 @@
 #include <omp.h>
 #include <QTimer>
 #include <QLabel>
-#include "ChartsViewer.h"
+#include "../ChartsViewer.h"
 
 
 using namespace std;
